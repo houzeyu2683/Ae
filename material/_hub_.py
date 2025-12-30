@@ -1,0 +1,138 @@
+import torch
+import os
+import torchvision
+import torchcodec
+import functools
+import PIL.Image
+import tensordict
+
+def getCollation(queue: list, device: str) -> tensordict.TensorDict:
+    bundle = {
+        'image': []
+    }
+    iteration = queue
+    for item in iteration:
+        path = item
+        getComposition = torchvision.transforms.Compose(
+            [
+                torchvision.transforms.Resize((64, 64)),
+                torchvision.transforms.ToTensor()
+            ]
+        )
+        image = getComposition(
+            PIL.Image.open(path)
+        )
+        bundle['image'] += [image]
+        continue
+    _ = iteration
+    source = {
+        'image': torch.stack(bundle['image'], dim=0)
+    }
+    size = len(queue)
+    # image = frame.to(device)
+    # batch = len(queue)
+    collation = tensordict.TensorDict(
+        device = device,
+        source = source,
+        batch_size = size
+    )
+    # collation = image
+    return(collation)
+
+class Unit(torch.utils.data.Dataset):
+
+    def __init__(self, queue: list) -> None:
+        self.queue = queue
+        return
+    
+    def getLength(self) -> int:
+        length = len(self.queue)
+        return(length)
+
+    def getItem(self, index: int) -> tuple:
+        item = self.queue[index]
+        return(item)
+
+    __len__ = getLength
+    __getitem__ = getItem
+    pass
+
+class Document:
+
+    def __init__(self, path: str) -> None:
+        self.path = path
+        return
+
+    def getQueue(self) -> list:
+        folder = os.path.dirname(self.path)
+        paper = open(self.path, 'r')
+        queue = []
+        iteration = paper.readlines()
+        for item in iteration:
+            path = item.replace("\n", "")
+            queue += [os.path.join(folder, path)]
+            continue
+        _ = iteration
+        paper.close()
+        return(queue)
+
+    pass
+
+class Hub:
+
+    def __init__(self, device: str) -> None:
+        self.device = device
+        return
+
+    def getData(self, batch: int) -> torch.utils.data.DataLoader:
+        name = 'data.txt'
+        path = os.path.join(self.folder, name)
+        queue = Document(path).getQueue()
+        unit = Unit(queue)
+        data = torch.utils.data.DataLoader(
+            dataset=unit,
+            batch_size=batch,
+            shuffle=True,
+            collate_fn=functools.partial(getCollation, device=self.device),
+            drop_last=True
+        )
+        return(data)
+
+    def getValidation(
+        self, 
+        batch: int, 
+        reproducibility: bool
+    ) -> torch.utils.data.DataLoader:
+        name = 'validation.txt'
+        path = os.path.join(self.folder, name)
+        queue = Document(path).getQueue()
+        unit = Unit(queue)
+        validation = torch.utils.data.DataLoader(
+            dataset=unit,
+            batch_size=batch,
+            shuffle=not reproducibility,
+            collate_fn=functools.partial(getCollation, device=self.device),
+            drop_last=not reproducibility
+        )
+        return(validation)
+    
+    def getTest(
+        self, 
+        batch: int,
+        reproducibility: bool
+    ) -> torch.utils.data.DataLoader:
+        name = 'test.txt'
+        path = os.path.join(self.folder, name)
+        queue = Document(path).getQueue()
+        unit = Unit(queue)
+        test = torch.utils.data.DataLoader(
+            dataset=unit,
+            batch_size=batch,
+            shuffle=not reproducibility,
+            collate_fn=functools.partial(getCollation, device=self.device),
+            drop_last=not reproducibility
+        )
+        return(test)
+
+    folder = 'material/storage'
+    pass

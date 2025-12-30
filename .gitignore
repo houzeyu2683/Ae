@@ -1,2 +1,4 @@
-*storage
+storage/
 *.pt
+__pycache__/
+
