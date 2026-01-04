@@ -36,15 +36,16 @@ class Model(torch.nn.Module):
         image: torch.Tensor
     ) -> tensordict.TensorDict:
         representation = tensordict.TensorDict(device=self.device)
-        space = self.layer.encode(image).latents
-        embedding, _, (_, _, token) = self.layer.quantize(space)
+        embedding = self.layer.encode(image).latents
+        quantization, _, (_, _, token) = self.layer.quantize(embedding) # quantization
         representation.set('embedding', embedding)
+        representation.set('quantization', quantization)
         representation.set('token', token)
         return(representation)
 
-    def getReconstruction(self, embedding: torch.Tensor) -> torch.Tensor:
-        embedding = self.layer.post_quant_conv(embedding)
-        reconstruction = self.layer.decoder(embedding)
+    def getReconstruction(self, quantization: torch.Tensor) -> torch.Tensor:
+        quantization = self.layer.post_quant_conv(quantization)
+        reconstruction = self.layer.decoder(quantization)
         return(reconstruction)
 
     def getCriteria(

@@ -130,8 +130,8 @@ class Framework:
 
                         image = batch['image']
                         representation = getRepresentation(image)
-                        embedding = representation['embedding']
-                        reconstruction = getReconstruction(embedding)
+                        quantization = representation['quantization']
+                        reconstruction = getReconstruction(quantization)
 
                         # reconstruction==reconstruction_2
 
