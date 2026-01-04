@@ -16,7 +16,11 @@ def getCollation(queue: list, device: str) -> tensordict.TensorDict:
         getComposition = torchvision.transforms.Compose(
             [
                 torchvision.transforms.Resize((64, 64)),
-                torchvision.transforms.ToTensor()
+                torchvision.transforms.ToTensor(),
+                torchvision.transforms.Normalize(
+                    [0.5, 0.5, 0.5], 
+                    [0.5, 0.5, 0.5]
+                )
             ]
         )
         image = getComposition(

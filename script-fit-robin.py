@@ -1,5 +1,5 @@
 import material
-import facility
+import robin
 
 device = 'cuda'
 hub = material.Hub(device)
@@ -11,14 +11,14 @@ validation = hub.getValidation(
     reproducibility=False
 )
 
-sparrow = facility.Sparrow(device)
-sparrow.activateLayer()
+model = robin.Model(device)
+model.activateLayer()
 
-history = './exp/Dec31'
-framework = facility.Framework(sparrow, device, history)
+history = './log/robin-01040703'
+framework = robin.Framework(model, device, history)
 # framework.loadWeight(path='./exp/Dec23-2/weight/400.pt') # 看情況
 
-snapshot = 1000
+snapshot = 2000
 total = -1
-accumulation = 1
+accumulation = 4
 framework.fitWeight(data, snapshot, total, accumulation, validation)

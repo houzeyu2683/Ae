@@ -19,20 +19,23 @@ class Dashboard:
         self.session.close()
         return(True)
 
-    def insertElement(self, tag: str, value: torch.Tensor, number: int) -> bool:
-        self.session.add_scalar(tag, value, number)
+    def insertStatistic(
+        self, 
+        tag: str, 
+        element: dict, 
+        number: int
+    ) -> bool:
+        self.session.add_scalars(tag, element, number)
         return(True)
-
-    # def insertGrapgh(
-    #     self, model: torch.nn.Module, variable: typing.Any
-    # ) -> bool:
-    #     self.session.add_graph(model, variable)
-    #     return(True)
     
     def insertPicture(
         self, tag: str, image: torch.Tensor, number: int
     ) -> bool:
-        grid = torchvision.utils.make_grid(image)
+        grid = torchvision.utils.make_grid(
+            image, 
+            normalize=True,
+            value_range=(-1, 1)
+        )
         self.session.add_image(tag, grid, number)
         return(True)
 
