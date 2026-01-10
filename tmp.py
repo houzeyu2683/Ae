@@ -1,113 +1,86 @@
-# from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
-import tensorboard.backend.event_processing.event_accumulator
-import io
-import PIL.Image
-
-ea = tensorboard.backend.event_processing.event_accumulator.EventAccumulator("./log/robin-01030705/", size_guidance={"images": 1e8})
-ea.Reload()
-lock = ea.Images("Validation/Overview")
-# loss = ea.Scalars("train/loss")
-
-image = PIL.Image.open(io.BytesIO(lock[0].encoded_image_string))
-image.save('test.png')
-
-
-tensorboard.backend.event_processing.event_accumulator
-
-import imageio
+import cv2
 import numpy as np
 
-def save_gif_with_pause(frames, path, fps=6, pause_sec=2.0):
-    """
-    frames: numpy array, shape (T, H, W, 3), uint8
-    fps: 播放幀率
-    pause_sec: 最後一幀停幾秒
-    """
-    pause_frames = int(fps * pause_sec)
+# -----------------------------
+# Parameters
+# -----------------------------
+alpha = 0.85        # EMA smoothing factor (0.7~0.9)
+use_percentile = 50 # 50 = median
+max_gain = 1.5      # 防止極端亮度爆掉
+min_gain = 0.5
 
-    last = frames[-1:]
-    frames_with_pause = np.concatenate(
-        [frames, np.repeat(last, pause_frames, axis=0)],
-        axis=0
+input_video = "log/eval/output.mp4"
+output_video = "output_deflicker.mp4"
+
+# -----------------------------
+# Read video
+# -----------------------------
+cap = cv2.VideoCapture(input_video)
+fps = cap.get(cv2.CAP_PROP_FPS)
+width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+frames = []
+luma_stats = []
+
+print("Reading video...")
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        break
+
+    lab = cv2.cvtColor(frame, cv2.COLOR_BGR2LAB)
+    L = lab[:, :, 0].astype(np.float32)
+
+    stat = np.percentile(L, use_percentile)
+    frames.append(lab)
+    luma_stats.append(stat)
+
+cap.release()
+
+luma_stats = np.array(luma_stats)
+
+# -----------------------------
+# Temporal EMA smoothing
+# -----------------------------
+luma_smooth = np.zeros_like(luma_stats)
+luma_smooth[0] = luma_stats[0]
+
+for i in range(1, len(luma_stats)):
+    luma_smooth[i] = (
+        alpha * luma_stats[i]
+        + (1 - alpha) * luma_smooth[i - 1]
     )
 
-    imageio.mimsave(path, frames_with_pause, fps=fps)
+# -----------------------------
+# Reference luminance
+# -----------------------------
+luma_ref = np.median(luma_smooth)
 
-# 使用
-save_gif_with_pause(video_np, "result.gif", fps=6, pause_sec=2)
+print(f"Reference luminance: {luma_ref:.2f}")
 
-# import torch
-# import torch.nn as nn
-# from torch.optim import Adam
-# from diffusers import VQModel
+# -----------------------------
+# Write output video
+# -----------------------------
+fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+writer = cv2.VideoWriter(output_video, fourcc, fps, (width, height))
 
-# # -----------------------
-# # 超參數
-# # -----------------------
-# batch_size = 4
-# channels = 3
-# height = 64
-# width = 64
-# lr = 2e-4
+print("Processing frames...")
 
-# # -----------------------
-# # 模型初始化
-# # -----------------------
-# vq_model = VQModel(
-#     in_channels=3,
-#     out_channels=3,
-#     down_block_types=["DownEncoderBlock2D"] * 3,
-#     up_block_types=["UpDecoderBlock2D"] * 3,
-#     block_out_channels=(128, 256, 512),
-#     layers_per_block=1,
-#     # act_fn="silu",
-#     # latent_channels=8,
-#     # norm_num_groups=32,
-#     num_vq_embeddings=512,  # codebook size
-#     vq_embed_dim=8,
-#     # scaling_factor=0.18215,
-# )
+for lab, luma in zip(frames, luma_smooth):
+    gain = luma_ref / (luma + 1e-6)
+    gain = np.clip(gain, min_gain, max_gain)
 
-# # 設定 optimizer
-# optimizer = Adam(vq_model.parameters(), lr=lr)
+    L = lab[:, :, 0].astype(np.float32)
+    L = L * gain
+    L = np.clip(L, 0, 255)
 
-# # 模擬訓練資料 (batch of images)
-# x = torch.randn(batch_size, channels, height, width)
+    lab[:, :, 0] = L.astype(np.uint8)
 
-# # -----------------------
-# # Training step
-# # -----------------------
-# vq_model.train()  # 訓練模式
+    bgr = cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
+    writer.write(bgr)
 
-# optimizer.zero_grad()
+writer.release()
 
-# # Forward pass (VQModel 會自動處理 encode -> quantize -> decode)
-# output = vq_model(x)
-
-# # output 包含:
-# # - sample: 重建的圖片
-# # - commit_loss: VQ 的 commitment loss
-# x_recon = output.sample
-
-# # Reconstruction loss
-# recon_loss = nn.MSELoss()(x_recon, x)
-
-# # VQ commitment loss (從 output 取得)
-# commit_loss = output.commit_loss
-
-# ##
-# ## 有辦法透過output計算commit_loss？
-# ##
-
-# # 總 loss
-# total_loss = recon_loss + commit_loss
-
-# # Backward
-# total_loss.backward()
-
-# # 更新參數
-# optimizer.step()
-
-# print("Reconstruction loss:", recon_loss.item())
-# print("Commit loss:", commit_loss.item())
-# print("Total loss:", total_loss.item())
+print("Done! Output saved to:", output_video)

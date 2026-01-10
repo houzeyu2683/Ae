@@ -4,6 +4,7 @@ import safetensors.torch
 import bitsandbytes
 import visualization
 import tqdm
+import torchvision
 
 class Framework:
 
@@ -124,17 +125,10 @@ class Framework:
                             self.model, 'getReconstruction'
                         )
                         batch = next(iter(validation))
-
-                        # criteria = self.model(batch)
-                        # reconstruction_2 = criteria['reconstruction']
-
                         image = batch['image']
                         representation = getRepresentation(image)
                         quantization = representation['quantization']
                         reconstruction = getReconstruction(quantization)
-
-                        # reconstruction==reconstruction_2
-
                         overview = torch.cat([image, reconstruction], dim=0)
                         dashboard.insertPicture(
                             'Validation/Overview', 
@@ -152,6 +146,35 @@ class Framework:
             if(termination): break
             continue
         dashboard.closeSession()
+        return(True)
+
+    @torch.no_grad()
+    def makeEvaluation(self, test: torch.utils.data.DataLoader) -> bool:
+        tag = 'evaluation'
+        folder = os.path.join(self.history, tag)
+        os.makedirs(folder, exist_ok=True)
+        self.model.eval()
+        iteration = enumerate(test)
+        for index, batch in iteration:
+            getRepresentation = getattr(
+                self.model, 'getRepresentation'
+            )
+            getReconstruction = getattr(
+                self.model, 'getReconstruction'
+            )
+            image = batch['image']
+            representation = getRepresentation(image)
+            quantization = representation['quantization']
+            reconstruction = getReconstruction(quantization)
+            overview = torch.cat([image, reconstruction], dim=0)
+            torchvision.utils.save_image(
+                overview,
+                os.path.join(folder, f'{index}.jpg'),
+                normalize=True,
+                value_range=(-1, 1)
+            )
+            continue
+        _ = iteration
         return(True)
 
     pass

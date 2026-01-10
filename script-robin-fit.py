@@ -14,9 +14,9 @@ validation = hub.getValidation(
 model = robin.Model(device)
 model.activateLayer()
 
-history = './log/robin-01040703'
+history = './log/robin-2026-0103-2' #
 framework = robin.Framework(model, device, history)
-# framework.loadWeight(path='./exp/Dec23-2/weight/400.pt') # 看情況
+framework.loadWeight(path='./log/robin-2026-0103-1/weight/60900.pt') # 看情況
 
 snapshot = 2000
 total = -1
