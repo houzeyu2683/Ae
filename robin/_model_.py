@@ -1,6 +1,7 @@
 import torch
 import diffusers
 import tensordict
+import safetensors.torch
 
 class Model(torch.nn.Module):
 
@@ -9,6 +10,11 @@ class Model(torch.nn.Module):
         self.device = device
         return
 
+    def loadWeight(self, path: str) -> bool:
+        state_dict = safetensors.torch.load_file(path)
+        self.load_state_dict(state_dict)
+        return(True)
+    
     def activateLayer(self) -> bool:
         layer = diffusers.VQModel(
             in_channels=3,

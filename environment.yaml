@@ -1,4 +1,4 @@
-name: VAeE
+name: VAe
 channels:
   - defaults
 dependencies:
@@ -122,4 +122,4 @@ dependencies:
       - werkzeug==3.1.4
       - yarl==1.22.0
       - zipp==3.23.0
-prefix: /home/houzeyu2683/.conda/envs/VAeE
+prefix: /home/houzeyu2683/.conda/envs/VAe

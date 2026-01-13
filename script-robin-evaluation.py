@@ -3,16 +3,18 @@ import robin
 
 device = 'cuda'
 hub = material.Hub(device)
-batch = 1
-test = hub.getTest(batch, reproducibility=True)
+test = hub.getTest(batch=1, reproducibility=True)
 
 model = robin.Model(device)
 model.activateLayer()
+path = './log/robin-2026-0103/weight/60900.pt'
+model.loadWeight(path)
 
-history = './log/eval' #
+history = './log/robin-2026-0103' #
 framework = robin.Framework(model, device, history)
-path = './log/robin-2026-0103-1/weight/60900.pt'
-framework.loadWeight(path) # 看情況
 
-# framework.fitWeight(data, snapshot, total, accumulation, validation)
-framework.makeEvaluation(test)
+for index, batch in enumerate(test):
+    framework.makeInference(batch)
+    name = str(index)
+    framework.saveInference(name)
+    continue

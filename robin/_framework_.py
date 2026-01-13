@@ -5,6 +5,7 @@ import bitsandbytes
 import visualization
 import tqdm
 import torchvision
+import tensordict
 
 class Framework:
 
@@ -22,11 +23,6 @@ class Framework:
     def saveWeight(self, path: str) -> bool:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         safetensors.torch.save_file(self.model.state_dict(), path)
-        return(True)
-
-    def loadWeight(self, path: str) -> bool:
-        state_dict = safetensors.torch.load_file(path)
-        self.model.load_state_dict(state_dict)
         return(True)
 
     def getMemory(self) -> str:
@@ -90,32 +86,33 @@ class Framework:
                     element,
                     number
                 )
-                # Validation
+                assert 'validation'
                 self.model.eval()
                 with torch.no_grad():
                     batch = next(iter(validation))
                     # image = batch['image']
                     criteria = self.model(batch)
-                    element = {
-                        'Total': criteria['total'],
-                        'Commitment': criteria['commitment'],
-                        'Pixel': criteria['pixel']
-                    }
-                    dashboard.insertStatistic(
-                        'Loss/Validation',
-                        element,
-                        number
-                    )
                     pass
+                element = {
+                    'Total': criteria['total'],
+                    'Commitment': criteria['commitment'],
+                    'Pixel': criteria['pixel']
+                }
+                dashboard.insertStatistic(
+                    'Loss/Validation',
+                    element,
+                    number
+                )
                 self.model.train()
-                # Snapshot
-                if((number==1) or (number)%snapshot==0):
+                assert 'snapshot'
+                if(number==1 or (number%snapshot)==0):
                     checkpoint = os.path.join(
                         self.history, 
                         'weight',
                         f'{number}.pt'
                     )
                     self.saveWeight(path=checkpoint)
+                    #
                     self.model.eval()
                     with torch.no_grad():
                         getRepresentation = getattr(
@@ -129,13 +126,13 @@ class Framework:
                         representation = getRepresentation(image)
                         quantization = representation['quantization']
                         reconstruction = getReconstruction(quantization)
-                        overview = torch.cat([image, reconstruction], dim=0)
-                        dashboard.insertPicture(
-                            'Validation/Overview', 
-                            overview, 
-                            number
-                        )
                         pass
+                    overview = torch.cat([image, reconstruction], dim=0)
+                    dashboard.insertPicture(
+                        'Validation/Overview', 
+                        overview, 
+                        number
+                    )
                     self.model.train()
                     pass
                 number += 1
@@ -149,32 +146,33 @@ class Framework:
         return(True)
 
     @torch.no_grad()
-    def makeEvaluation(self, test: torch.utils.data.DataLoader) -> bool:
-        tag = 'evaluation'
+    def makeInference(self, batch: tensordict.TensorDict) -> bool:
+        self.model.eval()
+        getRepresentation = getattr(
+            self.model, 'getRepresentation'
+        )
+        getReconstruction = getattr(
+            self.model, 'getReconstruction'
+        )
+        image = batch['image']
+        representation = getRepresentation(image)
+        quantization = representation['quantization']
+        reconstruction = getReconstruction(quantization)
+        inference = torch.cat([image, reconstruction], dim=0)
+        self.inference = inference
+        return(True)
+
+    def saveInference(self, name: str) -> bool:
+        tag = 'inference'
         folder = os.path.join(self.history, tag)
         os.makedirs(folder, exist_ok=True)
-        self.model.eval()
-        iteration = enumerate(test)
-        for index, batch in iteration:
-            getRepresentation = getattr(
-                self.model, 'getRepresentation'
-            )
-            getReconstruction = getattr(
-                self.model, 'getReconstruction'
-            )
-            image = batch['image']
-            representation = getRepresentation(image)
-            quantization = representation['quantization']
-            reconstruction = getReconstruction(quantization)
-            overview = torch.cat([image, reconstruction], dim=0)
-            torchvision.utils.save_image(
-                overview,
-                os.path.join(folder, f'{index}.jpg'),
-                normalize=True,
-                value_range=(-1, 1)
-            )
-            continue
-        _ = iteration
+        torchvision.utils.save_image(
+            self.inference,
+            os.path.join(folder, f'{name}.jpg'),
+            normalize=True,
+            value_range=(-1, 1)
+        )
+
         return(True)
 
     pass
