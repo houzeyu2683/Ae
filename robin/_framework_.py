@@ -65,12 +65,13 @@ class Framework:
             for batch in iteration:
                 memory = self.getMemory()
                 iteration.set_postfix({"Memory": memory})
+                # Data
                 with torch.amp.autocast(self.device):
                     criteria = self.model(batch)
                     pass
                 loss = torch.div(criteria['total'], accumulation)
                 gradient.scale(loss).backward()
-                if((number)%accumulation==0):
+                if(number%accumulation==0):
                     gradient.step(optimization)
                     # schedule.step()
                     gradient.update()
@@ -86,13 +87,13 @@ class Framework:
                     element,
                     number
                 )
-                assert 'validation'
+                # Validation
                 self.model.eval()
                 with torch.no_grad():
                     batch = next(iter(validation))
-                    # image = batch['image']
                     criteria = self.model(batch)
                     pass
+                self.model.train()
                 element = {
                     'Total': criteria['total'],
                     'Commitment': criteria['commitment'],
@@ -103,8 +104,7 @@ class Framework:
                     element,
                     number
                 )
-                self.model.train()
-                assert 'snapshot'
+                # Snapshot
                 if(number==1 or (number%snapshot)==0):
                     checkpoint = os.path.join(
                         self.history, 
@@ -112,28 +112,6 @@ class Framework:
                         f'{number}.pt'
                     )
                     self.saveWeight(path=checkpoint)
-                    #
-                    self.model.eval()
-                    with torch.no_grad():
-                        getRepresentation = getattr(
-                            self.model, 'getRepresentation'
-                        )
-                        getReconstruction = getattr(
-                            self.model, 'getReconstruction'
-                        )
-                        batch = next(iter(validation))
-                        image = batch['image']
-                        representation = getRepresentation(image)
-                        quantization = representation['quantization']
-                        reconstruction = getReconstruction(quantization)
-                        pass
-                    overview = torch.cat([image, reconstruction], dim=0)
-                    dashboard.insertPicture(
-                        'Validation/Overview', 
-                        overview, 
-                        number
-                    )
-                    self.model.train()
                     pass
                 number += 1
                 termination = False if(total==-1) else (total<number)
@@ -147,6 +125,7 @@ class Framework:
 
     @torch.no_grad()
     def makeInference(self, batch: tensordict.TensorDict) -> bool:
+        batch = batch.to(self.device, non_blocking=True)
         self.model.eval()
         getRepresentation = getattr(
             self.model, 'getRepresentation'
@@ -158,22 +137,58 @@ class Framework:
         representation = getRepresentation(image)
         quantization = representation['quantization']
         reconstruction = getReconstruction(quantization)
-        inference = torch.cat([image, reconstruction], dim=0)
+        inference = {
+            'image': image,
+            'reconstruction': reconstruction
+        }
+        # inference = torch.cat([image, reconstruction], dim=0)
         self.inference = inference
         return(True)
 
-    def saveInference(self, name: str) -> bool:
+    def saveInference(self, archive: str, comparison: bool) -> bool:
         tag = 'inference'
         folder = os.path.join(self.history, tag)
         os.makedirs(folder, exist_ok=True)
+        if(comparison):
+            image = self.inference['image']
+            reconstruction = self.inference['reconstruction']
+            inference = torch.cat([image, reconstruction], dim=0)
+            pass
+        else:
+            inference = self.inference['reconstruction']
+            pass
         torchvision.utils.save_image(
-            self.inference,
-            os.path.join(folder, f'{name}.jpg'),
+            inference,
+            os.path.join(folder, archive),
             normalize=True,
             value_range=(-1, 1)
         )
-
         return(True)
 
     pass
 
+
+
+                    #
+                    # self.model.eval()
+                    # with torch.no_grad():
+                    #     getRepresentation = getattr(
+                    #         self.model, 'getRepresentation'
+                    #     )
+                    #     getReconstruction = getattr(
+                    #         self.model, 'getReconstruction'
+                    #     )
+                    #     batch = next(iter(validation))
+                    #     image = batch['image']
+                    #     representation = getRepresentation(image)
+                    #     quantization = representation['quantization']
+                    #     reconstruction = getReconstruction(quantization)
+                    #     pass
+                    # image = getattr(image, 'to')(self.device)
+                    # overview = torch.cat([image, reconstruction], dim=0)
+                    # dashboard.insertPicture(
+                    #     'Validation/Overview', 
+                    #     overview, 
+                    #     number
+                    # )
+                    # self.model.train()

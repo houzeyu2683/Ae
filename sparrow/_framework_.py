@@ -4,6 +4,8 @@ import safetensors.torch
 import bitsandbytes
 import visualization
 import tqdm
+import tensordict
+import torchvision
 
 class Framework:
 
@@ -21,11 +23,6 @@ class Framework:
     def saveWeight(self, path: str) -> bool:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         safetensors.torch.save_file(self.model.state_dict(), path)
-        return(True)
-
-    def loadWeight(self, path: str) -> bool:
-        state_dict = safetensors.torch.load_file(path)
-        self.model.load_state_dict(state_dict)
         return(True)
 
     def getMemory(self) -> str:
@@ -68,14 +65,14 @@ class Framework:
             for batch in iteration:
                 memory = self.getMemory()
                 iteration.set_postfix({"Memory": memory})
+                # Data
                 scale = 1e-5 #1e-2#1.0#min(1.0, (number/10000)*0.1)
                 with torch.amp.autocast(self.device):
                     criteria = self.model(batch, scale)
                     pass
-                # loss = criteria['total'] / accumulation  # 分攤梯度
                 loss = torch.div(criteria['total'], accumulation)
                 gradient.scale(loss).backward()
-                if((number)%accumulation==0):
+                if(number%accumulation==0):
                     gradient.step(optimization)
                     # schedule.step()
                     gradient.update()
@@ -96,62 +93,26 @@ class Framework:
                 with torch.no_grad():
                     batch = next(iter(validation))
                     criteria = self.model(batch, scale)
-                    element = {
-                        'Total': criteria['total'],
-                        'Divergence': criteria['divergence'],
-                        'Pixel': criteria['pixel']
-                    }
-                    dashboard.insertStatistic(
-                        'Loss/Validation',
-                        element,
-                        number
-                    )
                     pass
                 self.model.train()
+                element = {
+                    'Total': criteria['total'],
+                    'Divergence': criteria['divergence'],
+                    'Pixel': criteria['pixel']
+                }
+                dashboard.insertStatistic(
+                    'Loss/Validation',
+                    element,
+                    number
+                )
                 # Snapshot
-                if((number==1) or number%snapshot==0):
+                if(number==1 or number%snapshot==0):
                     checkpoint = os.path.join(
                         self.history, 
                         'weight',
                         f'{number}.pt'
                     )
                     self.saveWeight(path=checkpoint)
-                    self.model.eval()
-                    with torch.no_grad():
-                        getDistribution = getattr(
-                            self.model, 
-                            'getDistribution'
-                        )
-                        getReconstruction = getattr(
-                            self.model, 
-                            'getReconstruction'
-                        )
-                        getGeneration = getattr(
-                            self.model, 
-                            'getGeneration'
-                        )
-                        batch = next(iter(validation))
-                        image = batch['image']
-                        distribution = getDistribution(image)
-                        specimen = distribution['specimen']
-                        reconstruction = getReconstruction(specimen)
-                        overview = torch.cat(
-                            [image, reconstruction], 
-                            dim=0
-                        )
-                        generation = getGeneration(len(overview))
-                        dashboard.insertPicture(
-                            'Validation/Overview', 
-                            overview, 
-                            number
-                        )
-                        dashboard.insertPicture(
-                            'Validation/Generation', 
-                            generation,
-                            number
-                        )
-                        pass
-                    self.model.train()
                     pass
                 number += 1
                 termination = False if(total==-1) else (total<number)
@@ -163,5 +124,126 @@ class Framework:
         dashboard.closeSession()
         return(True)
 
+    @torch.no_grad()
+    def makeComparison(self, batch: tensordict.TensorDict) -> bool:
+        batch = batch.to(self.device, non_blocking=True)
+        self.model.eval()
+        # with torch.no_grad():
+        image = batch['image']
+        getDistribution = getattr(self.model, 'getDistribution')
+        getReconstruction = getattr(self.model, 'getReconstruction')
+        distribution = getDistribution(image)
+        sample = distribution['sample']
+        reconstruction = getReconstruction(sample)
+            # pass
+        comparison = torch.cat([image, reconstruction], dim=0)
+        self.comparison = comparison
+        return(True)
+
+    def saveComparison(self, archive: str) -> bool:
+        tag = 'comparison'
+        folder = os.path.join(self.history, tag)
+        os.makedirs(folder, exist_ok=True)
+        torchvision.utils.save_image(
+            self.comparison,
+            os.path.join(folder, archive),
+            normalize=True,
+            value_range=(-1, 1)
+        )
+        return(True)
+    
+    @torch.no_grad()
+    def makePerspective(self, number: int) -> bool:
+        shape = (number, 8, 4, 4)
+        self.model.eval()
+        # with torch.no_grad():
+        sample = torch.randn(*shape, device=self.device)
+        getReconstruction = getattr(self.model, 'getReconstruction')
+        perspective = getReconstruction(sample)
+            # pass
+        self.perspective = perspective
+        return(True)
+
+    def savePerspective(self, archive: str) -> bool:
+        tag = 'perspective'
+        folder = os.path.join(self.history, tag)
+        os.makedirs(folder, exist_ok=True)
+        torchvision.utils.save_image(
+            self.perspective,
+            os.path.join(folder, archive),
+            normalize=True,
+            value_range=(-1, 1)
+        )
+        return(True)
+
+    # def makeInference(self, batch: tensordict.TensorDict) -> bool:
+    #     image = batch['image'].to(self.device, non_blocking=True)
+    #     getDistribution = getattr(
+    #         self.model, 'getDistribution'
+    #     )
+    #     getReconstruction = getattr(
+    #         self.model, 'getReconstruction'
+    #     )
+    #     self.model.eval()
+    #     with torch.no_grad():
+    #         distribution = getDistribution(image)
+    #         sample = distribution['sample']
+    #         reconstruction = getReconstruction(sample)
+    #         pass
+    #     # quantization = representation['quantization']
+    #     # reconstruction = getReconstruction(quantization)
+    #     inference = torch.cat([image, reconstruction], dim=0)
+    #     self.inference = inference
+    #     return(True)
+
+    # def saveInference(self, name: str) -> bool:
+    #     tag = 'inference'
+    #     folder = os.path.join(self.history, tag)
+    #     os.makedirs(folder, exist_ok=True)
+    #     torchvision.utils.save_image(
+    #         self.inference,
+    #         os.path.join(folder, f'{name}.jpg'),
+    #         normalize=True,
+    #         value_range=(-1, 1)
+    #     )
+    #     return(True)
+
     pass
 
+                    # self.model.eval()
+                    # with torch.no_grad():
+                    #     getDistribution = getattr(
+                    #         self.model, 
+                    #         'getDistribution'
+                    #     )
+                    #     getReconstruction = getattr(
+                    #         self.model, 
+                    #         'getReconstruction'
+                    #     )
+                    #     getGeneration = getattr(
+                    #         self.model, 
+                    #         'getGeneration'
+                    #     )
+                    #     batch = next(iter(validation))
+                    #     image = batch['image']
+                    #     distribution = getDistribution(image)
+                    #     sample = distribution['sample']
+                    #     reconstruction = getReconstruction(sample)
+                    #     generation = getGeneration(64)
+                    #     pass
+                    # self.model.train()
+                    # image = getattr(image, 'to')(self.device)
+                    # overview = torch.cat(
+                    #     [image, reconstruction], 
+                    #     dim=0
+                    # )
+                    # dashboard.insertPicture(
+                    #     'Validation/Overview', 
+                    #     overview, 
+                    #     number
+                    # )
+                    # dashboard.insertPicture(
+                    #     'Validation/Generation', 
+                    #     generation,
+                    #     number
+                    # )

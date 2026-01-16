@@ -6,7 +6,7 @@ import functools
 import PIL.Image
 import tensordict
 
-def getCollation(queue: list, device: str) -> tensordict.TensorDict:
+def getCollation(queue: list) -> tensordict.TensorDict:
     bundle = {
         'image': []
     }
@@ -33,14 +33,10 @@ def getCollation(queue: list, device: str) -> tensordict.TensorDict:
         'image': torch.stack(bundle['image'], dim=0)
     }
     size = len(queue)
-    # image = frame.to(device)
-    # batch = len(queue)
     collation = tensordict.TensorDict(
-        device = device,
         source = source,
         batch_size = size
-    )
-    # collation = image
+    ).detach()
     return(collation)
 
 class Unit(torch.utils.data.Dataset):
@@ -84,8 +80,7 @@ class Document:
 
 class Hub:
 
-    def __init__(self, device: str) -> None:
-        self.device = device
+    def __init__(self) -> None:
         return
 
     def getData(self, batch: int) -> torch.utils.data.DataLoader:
@@ -97,8 +92,11 @@ class Hub:
             dataset=unit,
             batch_size=batch,
             shuffle=True,
-            collate_fn=functools.partial(getCollation, device=self.device),
-            drop_last=True
+            collate_fn=getCollation, #functools.partial(getCollation, device=self.device),
+            drop_last=True,
+            num_workers=4,
+            pin_memory=True,
+            persistent_workers=True
         )
         return(data)
 
@@ -115,8 +113,11 @@ class Hub:
             dataset=unit,
             batch_size=batch,
             shuffle=not reproducibility,
-            collate_fn=functools.partial(getCollation, device=self.device),
-            drop_last=not reproducibility
+            collate_fn=getCollation, #functools.partial(getCollation, device=self.device),
+            drop_last=not reproducibility,
+            num_workers=2,
+            pin_memory=True,
+            persistent_workers=True
         )
         return(validation)
     
@@ -133,8 +134,11 @@ class Hub:
             dataset=unit,
             batch_size=batch,
             shuffle=not reproducibility,
-            collate_fn=functools.partial(getCollation, device=self.device),
-            drop_last=not reproducibility
+            collate_fn=getCollation, #functools.partial(getCollation, device=self.device),
+            drop_last=not reproducibility,
+            num_workers=2,
+            pin_memory=True,
+            persistent_workers=True
         )
         return(test)
 

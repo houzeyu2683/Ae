@@ -1,20 +1,20 @@
 import material
 import robin
 
-device = 'cuda'
-hub = material.Hub(device)
+hub = material.Hub()
 test = hub.getTest(batch=1, reproducibility=True)
 
+device = 'cuda'
 model = robin.Model(device)
 model.activateLayer()
-path = './log/robin-2026-0103/weight/60900.pt'
-model.loadWeight(path)
+model.loadWeight(path='./log/robin-2026-0103/weight/60000.pt')
 
-history = './log/robin-2026-0103' #
+history = './log/robin-2026-0103/' #
 framework = robin.Framework(model, device, history)
 
 for index, batch in enumerate(test):
+    archive = f'{index}.jpg'
+    comparison = False
     framework.makeInference(batch)
-    name = str(index)
-    framework.saveInference(name)
+    framework.saveInference(archive, comparison)
     continue

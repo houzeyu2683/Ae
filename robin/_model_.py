@@ -41,24 +41,26 @@ class Model(torch.nn.Module):
         self, 
         image: torch.Tensor
     ) -> tensordict.TensorDict:
-        representation = tensordict.TensorDict(device=self.device)
+        image = image.to(self.device, non_blocking=True)
         embedding = self.layer.encode(image).latents
         quantization, _, (_, _, token) = self.layer.quantize(embedding) # quantization
+        representation = tensordict.TensorDict(device=self.device)
         representation.set('embedding', embedding)
         representation.set('quantization', quantization)
         representation.set('token', token)
         return(representation)
 
     def getReconstruction(self, quantization: torch.Tensor) -> torch.Tensor:
-        quantization = self.layer.post_quant_conv(quantization)
-        reconstruction = self.layer.decoder(quantization)
+        quantization = quantization.to(self.device, non_blocking=True)
+        value = self.layer.post_quant_conv(quantization)
+        reconstruction = self.layer.decoder(value)
         return(reconstruction)
 
     def getCriteria(
         self, 
         batch: tensordict.TensorDict,
     ) -> tensordict.TensorDict:
-        criteria = tensordict.TensorDict(device=self.device)
+        batch = batch.to(self.device, non_blocking=True)
         image = batch['image']
         node = self.layer(image)
         commitment = getattr(node, 'commit_loss')
@@ -68,6 +70,7 @@ class Model(torch.nn.Module):
             torch.pow(image-reconstruction, 2)
         ).sum()
         total = commitment + pixel
+        criteria = tensordict.TensorDict(device=self.device)
         criteria.set('commitment', commitment)
         criteria.set('pixel', pixel)
         criteria.set('total', total)

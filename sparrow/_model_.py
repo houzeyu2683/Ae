@@ -1,6 +1,7 @@
 import torch
 import diffusers
 import tensordict
+import safetensors.torch
 
 class Model(torch.nn.Module):
 
@@ -9,6 +10,11 @@ class Model(torch.nn.Module):
         self.device = device
         return
 
+    def loadWeight(self, path: str) -> bool:
+        state_dict = safetensors.torch.load_file(path)
+        self.load_state_dict(state_dict)
+        return(True)
+    
     def activateLayer(self) -> bool:
         layer = diffusers.AutoencoderKL(
             in_channels=3,
@@ -35,27 +41,30 @@ class Model(torch.nn.Module):
         return(True)
 
     def getDistribution(
-        self, image: torch.Tensor
+        self, 
+        image: torch.Tensor
     ) -> tensordict.TensorDict:
+        image = image.to(self.device, non_blocking=True)
+        # assert hasattr(self.layer, 'encode')
+        compression = self.layer.encode(image)
+        mean = getattr(compression['latent_dist'], 'mean')
+        variance = getattr(compression['latent_dist'], 'var')
+        getSample = getattr(compression['latent_dist'], 'sample')
+        sample = getSample()
         distribution = tensordict.TensorDict(device=self.device)
-        route = getattr(self.layer, 'encode')
-        space = route(image)
-        mean = getattr(space['latent_dist'], 'mean')
-        variance = getattr(space['latent_dist'], 'var')
-        getSpecimen = getattr(space['latent_dist'], 'sample')
-        specimen = getSpecimen()
         distribution.set("mean", mean)
         distribution.set("variance", variance)
-        distribution.set("specimen", specimen)
+        distribution.set("sample", sample)
         return(distribution)
     
     def getReconstruction(
         self, 
-        specimen: torch.Tensor
+        sample: torch.Tensor
     ) -> torch.Tensor:
-        route = getattr(self.layer, 'decode')
-        node = route(specimen)
-        reconstruction = getattr(node, 'sample')
+        sample = sample.to(self.device, non_blocking=True)
+        # assert hasattr(self.layer, 'decode')
+        decompression = self.layer.decode(sample)
+        reconstruction = getattr(decompression, 'sample')
         return(reconstruction)
 
     def getCriteria(
@@ -63,7 +72,7 @@ class Model(torch.nn.Module):
         batch: tensordict.TensorDict,
         scale: float
     ) -> tensordict.TensorDict:
-        criteria = tensordict.TensorDict(device=self.device)
+        batch = batch.to(self.device, non_blocking=True)
         image = batch['image']
         distribution = self.getDistribution(image)
         mean = distribution['mean']
@@ -72,32 +81,32 @@ class Model(torch.nn.Module):
             1 + variance.log() - mean.pow(2) - variance,
             dim=(1, 2, 3)   # sum over (C, H, W)
         )
-        divergence = scale * distance.mean()
-        specimen = distribution['specimen']
-        reconstruction = self.getReconstruction(specimen)
+        divergence = distance.mean()
+        sample = distribution['sample']
+        reconstruction = self.getReconstruction(sample)
         pixel = torch.mean(
             (image-reconstruction).pow(2)
         )
-        total = divergence + pixel
+        total = (scale * divergence) + pixel
+        criteria = tensordict.TensorDict(device=self.device)
         criteria.set("divergence", divergence)
         criteria.set("pixel", pixel)
         criteria.set("total", total)
         return(criteria)
 
-    def getGeneration(self, number: int) -> torch.Tensor:
-        # generation = tensordict.TensorDict(device=self.device)
-        # getReconstruction
-        shape = (number, 8, 4, 4)
-        sample = torch.randn(*shape, device=self.device)
-        generation = self.getReconstruction(sample)
-        # route = getattr(self.layer, 'decode')
-        # generation = route(noise)['sample']
-        return(generation)
+    # def getPerspective(self, number: int) -> torch.Tensor:
+    #     shape = (number, 8, 4, 4)
+    #     sample = torch.randn(*shape, device=self.device)
+    #     generation = self.getReconstruction(sample)
+    #     # route = getattr(self.layer, 'decode')
+    #     # generation = route(noise)['sample']
+    #     return(generation)
 
-    def getRepresentation(self, image: torch.Tensor) -> torch.Tensor:
-        distribution = self.getDistribution(image)
-        representation = distribution['mean'].flatten(1, -1)
-        return(representation)
+    # def getRepresentation(self, image: torch.Tensor) -> torch.Tensor:
+    #     image = image.to(self.device, non_blocking=True)
+    #     distribution = self.getDistribution(image)
+    #     representation = distribution['mean'].flatten(1, -1)
+    #     return(representation)
 
     forward = getCriteria
     pass
