@@ -7,9 +7,9 @@ test = hub.getTest(batch=1, reproducibility=True)
 device = 'cuda'
 model = robin.Model(device)
 model.activateLayer()
-model.loadWeight(path='./log/robin-2026-0103/weight/60000.pt')
+model.loadWeight(path='log/robin-beta-0116/weight/10000.pt')
 
-history = './log/robin-2026-0103/' #
+history = './log/robin-beta-0116/' #
 framework = robin.Framework(model, device, history)
 
 for index, batch in enumerate(test):

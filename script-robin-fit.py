@@ -8,9 +8,9 @@ validation = hub.getValidation(batch=32, reproducibility=False)
 device = 'cuda'
 model = robin.Model(device)
 model.activateLayer()
-# model.loadWeight(path='./log/robin-2026-0103/weight/60900.pt') # 看情況
+model.loadWeight(path='./log/robin-2026-0103/weight/60000.pt') # 看情況
 
-history = './log/robin-unit-test' #
+history = './log/robin-beta-0116' #
 framework = robin.Framework(model, device, history)
 
 snapshot = 10000

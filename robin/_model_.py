@@ -65,17 +65,45 @@ class Model(torch.nn.Module):
         node = self.layer(image)
         commitment = getattr(node, 'commit_loss')
         reconstruction = getattr(node, 'sample')
-        pixel = torch.abs(image-reconstruction).mean()
+        torch.nn.functional.tanh(reconstruction)
+        pixel = torch.abs(image - reconstruction).mean()
         pixel = torch.mean(
             torch.pow(image-reconstruction, 2)
         ).sum()
-        total = commitment + pixel
+        # brightness = torch.sub(
+        #     self.getLuminosity(image),
+        #     self.getLuminosity(reconstruction)
+        # )
+        # brightness = torch.pow(brightness, 2).mean()
+        total = commitment + pixel #+ brightness
         criteria = tensordict.TensorDict(device=self.device)
         criteria.set('commitment', commitment)
         criteria.set('pixel', pixel)
+        # criteria.set('brightness', brightness)
         criteria.set('total', total)
-        # criteria.set('reconstruction', reconstruction) #!
         return(criteria)
+
+    # def getLuminosity(self, image: torch.Tensor) -> torch.Tensor:
+    #     """
+    #     img: torch.Tensor, shape (N, 3, H, W), value range (-1, 1)
+    #     return: torch.Tensor, shape (N, 3, H, W)
+    #             Y in [0,1], U/V roughly in [-0.5,0.5]
+    #     """
+    #     image = image.to(self.device, non_blocking=True)
+    #     # (-1,1) → (0,1)
+    #     color = (image + 1.0) / 2.0
+
+    #     red = color[:, 0:1]
+    #     green = color[:, 1:2]
+    #     blue = color[:, 2:3]
+
+    #     # Standard YUV (BT.601-like)
+    #     luminosity = 0.299 * red + 0.587 * green + 0.114 * blue
+    #     # u = -0.14713 * r - 0.28886 * g + 0.436 * b
+    #     # v = 0.615 * r - 0.51499 * g - 0.10001 * b
+
+    #     # yuv = torch.cat([y, u, v], dim=1)
+    #     return(luminosity)
 
     forward = getCriteria
     pass

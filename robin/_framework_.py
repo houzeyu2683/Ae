@@ -80,7 +80,8 @@ class Framework:
                 element = {
                     'Total': criteria['total'],
                     'Commitment': criteria['commitment'],
-                    'Pixel': criteria['pixel']
+                    'Pixel': criteria['pixel'],
+                    # 'Brightness': criteria['brightness']
                 }
                 dashboard.insertStatistic(
                     'Loss/Data',
@@ -97,7 +98,8 @@ class Framework:
                 element = {
                     'Total': criteria['total'],
                     'Commitment': criteria['commitment'],
-                    'Pixel': criteria['pixel']
+                    'Pixel': criteria['pixel'],
+                    # 'Brightness': criteria['brightness']
                 }
                 dashboard.insertStatistic(
                     'Loss/Validation',

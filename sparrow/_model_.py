@@ -19,21 +19,21 @@ class Model(torch.nn.Module):
         layer = diffusers.AutoencoderKL(
             in_channels=3,
             out_channels=3,
-            latent_channels=8,
-            block_out_channels=[32, 64, 128, 256, 256],  # 多一層 downsampling
+            latent_channels=64,
+            block_out_channels=[32, 64, 128, 256],  # 多一層 downsampling
             down_block_types=(
                 "DownEncoderBlock2D",
                 "DownEncoderBlock2D",
                 "DownEncoderBlock2D",
                 "DownEncoderBlock2D",
-                "DownEncoderBlock2D"
+                # "DownEncoderBlock2D"
             ),
             up_block_types=(
                 "UpDecoderBlock2D",
                 "UpDecoderBlock2D",
                 "UpDecoderBlock2D",
                 "UpDecoderBlock2D",
-                "UpDecoderBlock2D"
+                # "UpDecoderBlock2D"
             ),
             layers_per_block=1
         )

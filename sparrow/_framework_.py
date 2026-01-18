@@ -66,7 +66,8 @@ class Framework:
                 memory = self.getMemory()
                 iteration.set_postfix({"Memory": memory})
                 # Data
-                scale = 1e-5 #1e-2#1.0#min(1.0, (number/10000)*0.1)
+                period = number//(5*len(data))
+                scale = min(1e-5, 1e-6*period)
                 with torch.amp.autocast(self.device):
                     criteria = self.model(batch, scale)
                     pass

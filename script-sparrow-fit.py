@@ -10,7 +10,7 @@ model = sparrow.Model(device)
 model.activateLayer()
 # model.loadWeight(path='./exp/Dec23-2/weight/400.pt') # 看情況
 
-history = './log/sparrow-2026-0116'
+history = './log/sparrow-2026-0117'
 framework = sparrow.Framework(model, device, history)
 
 snapshot = 10000
