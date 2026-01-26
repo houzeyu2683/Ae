@@ -66,10 +66,11 @@ class Framework:
                 memory = self.getMemory()
                 iteration.set_postfix({"Memory": memory})
                 # Data
-                period = number//(5*len(data))
-                scale = min(1e-5, 1e-6*period)
+                # period = number//(5*len(data))
+                # scale = min(1e-5, 1e-6*period)
                 with torch.amp.autocast(self.device):
-                    criteria = self.model(batch, scale)
+                    # criteria = self.model(batch, scale)
+                    criteria = self.model(batch)
                     pass
                 loss = torch.div(criteria['total'], accumulation)
                 gradient.scale(loss).backward()
@@ -81,7 +82,7 @@ class Framework:
                     pass
                 element = {
                     'Total': criteria['total'],
-                    'Divergence': criteria['divergence'],
+                    # 'Divergence': criteria['divergence'],
                     'Pixel': criteria['pixel']
                 }
                 dashboard.insertStatistic(
@@ -93,12 +94,13 @@ class Framework:
                 self.model.eval()
                 with torch.no_grad():
                     batch = next(iter(validation))
-                    criteria = self.model(batch, scale)
+                    # criteria = self.model(batch, scale)
+                    criteria = self.model(batch)
                     pass
                 self.model.train()
                 element = {
                     'Total': criteria['total'],
-                    'Divergence': criteria['divergence'],
+                    # 'Divergence': criteria['divergence'],
                     'Pixel': criteria['pixel']
                 }
                 dashboard.insertStatistic(
@@ -131,11 +133,11 @@ class Framework:
         self.model.eval()
         # with torch.no_grad():
         image = batch['image']
-        getDistribution = getattr(self.model, 'getDistribution')
+        getCompression = getattr(self.model, 'getCompression')
         getReconstruction = getattr(self.model, 'getReconstruction')
-        distribution = getDistribution(image)
-        sample = distribution['sample']
-        reconstruction = getReconstruction(sample)
+        compression = getCompression(image)
+        # sample = distribution['sample']
+        reconstruction = getReconstruction(compression)
             # pass
         comparison = torch.cat([image, reconstruction], dim=0)
         self.comparison = comparison
@@ -153,29 +155,29 @@ class Framework:
         )
         return(True)
     
-    @torch.no_grad()
-    def makePerspective(self, number: int) -> bool:
-        shape = (number, 8, 4, 4)
-        self.model.eval()
-        # with torch.no_grad():
-        sample = torch.randn(*shape, device=self.device)
-        getReconstruction = getattr(self.model, 'getReconstruction')
-        perspective = getReconstruction(sample)
-            # pass
-        self.perspective = perspective
-        return(True)
+    # @torch.no_grad()
+    # def makePerspective(self, number: int) -> bool:
+    #     shape = (number, 8, 4, 4)
+    #     self.model.eval()
+    #     # with torch.no_grad():
+    #     sample = torch.randn(*shape, device=self.device)
+    #     getReconstruction = getattr(self.model, 'getReconstruction')
+    #     perspective = getReconstruction(sample)
+    #         # pass
+    #     self.perspective = perspective
+    #     return(True)
 
-    def savePerspective(self, archive: str) -> bool:
-        tag = 'perspective'
-        folder = os.path.join(self.history, tag)
-        os.makedirs(folder, exist_ok=True)
-        torchvision.utils.save_image(
-            self.perspective,
-            os.path.join(folder, archive),
-            normalize=True,
-            value_range=(-1, 1)
-        )
-        return(True)
+    # def savePerspective(self, archive: str) -> bool:
+    #     tag = 'perspective'
+    #     folder = os.path.join(self.history, tag)
+    #     os.makedirs(folder, exist_ok=True)
+    #     torchvision.utils.save_image(
+    #         self.perspective,
+    #         os.path.join(folder, archive),
+    #         normalize=True,
+    #         value_range=(-1, 1)
+    #     )
+    #     return(True)
 
     # def makeInference(self, batch: tensordict.TensorDict) -> bool:
     #     image = batch['image'].to(self.device, non_blocking=True)

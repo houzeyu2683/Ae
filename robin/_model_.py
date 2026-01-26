@@ -2,6 +2,8 @@ import torch
 import diffusers
 import tensordict
 import safetensors.torch
+import os
+import requests
 
 class Model(torch.nn.Module):
 
@@ -11,10 +13,33 @@ class Model(torch.nn.Module):
         return
 
     def loadWeight(self, path: str) -> bool:
-        state_dict = safetensors.torch.load_file(path)
-        self.load_state_dict(state_dict)
+        weight = safetensors.torch.load_file(path)
+        self.load_state_dict(weight)
         return(True)
-    
+
+    def loadVersion(self, tag: str) -> bool:
+        link = 'https://github.com/houzeyu2683/VAe/releases/download/'
+        root = '.hub/model/'
+        archive = 'weight.pt'
+        access = os.path.join(link, tag, archive)
+        folder = os.path.join(root, tag)
+        # archive = os.path.basename(access)
+        path = os.path.join(folder, archive)
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        here = os.path.isfile(path)
+        if(not here):
+            response = requests.get(access, stream=True)
+            paper = open(path, 'wb')
+            # with open(path, 'wb') as paper:
+            for chunk in response.iter_content(chunk_size=8192):
+                paper.write(chunk)
+                continue
+            paper.close()
+            pass
+        weight = safetensors.torch.load_file(path)
+        self.load_state_dict(weight)
+        return(True)
+
     def activateLayer(self) -> bool:
         layer = diffusers.VQModel(
             in_channels=3,

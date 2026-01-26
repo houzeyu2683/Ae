@@ -1,6 +1,6 @@
-# VAeE - Variational Autoencoder for Face Images
+# Ae - Autoencoder
 
-A PyTorch implementation of Variational Autoencoder (VAE) for face image generation and reconstruction, built on top of the Diffusers library's AutoencoderKL architecture.
+A PyTorch implementation of Autoencoder (Ae) for face image generation and reconstruction, built on top of the Diffusers library's AutoencoderKL architecture.
 
 ## Overview
 
@@ -12,7 +12,7 @@ This project implements a VAE model for learning latent representations of face 
 ## Project Structure
 
 ```
-VAeE/
+Ae/
 ├── facility/           # Core model and training framework
 │   ├── _sparrow_.py   # VAE model implementation (Sparrow)
 │   └── _framework_.py # Training framework and utilities
