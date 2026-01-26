@@ -1,113 +1,166 @@
-# from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
-import tensorboard.backend.event_processing.event_accumulator
-import io
 import PIL.Image
+import os
+import glob
+import torch
+import numpy
+import torchvision.transforms.functional
+import plotly.express
+import torch.functional
 
-ea = tensorboard.backend.event_processing.event_accumulator.EventAccumulator("./log/robin-01030705/", size_guidance={"images": 1e8})
-ea.Reload()
-lock = ea.Images("Validation/Overview")
-# loss = ea.Scalars("train/loss")
+class Orientation:
 
-image = PIL.Image.open(io.BytesIO(lock[0].encoded_image_string))
-image.save('test.png')
+    def __init__(self, image: torch.Tensor) -> None:
+        self.image = image
+        return
+    
+    def getGradient(self) -> torch.Tensor:
+        # gradient = {
+        #     'horizontal': frame[:, 1:-1, 2:] - frame[:, 1:-1, :-2],
+        #     'vertical': frame[:, 2:, 1:-1] - frame[:, :-2, 1:-1],
+        # }
+        gradient = [
+            self.image[:, 1:-1, 2:] - self.image[:, 1:-1, :-2],
+            self.image[:, 2:, 1:-1] - self.image[:, :-2, 1:-1]
+        ]
+        gradient = torch.cat(gradient, dim=0)
+        return(gradient)
 
+    pass
 
-tensorboard.backend.event_processing.event_accumulator
-
-import imageio
-import numpy as np
-
-def save_gif_with_pause(frames, path, fps=6, pause_sec=2.0):
-    """
-    frames: numpy array, shape (T, H, W, 3), uint8
-    fps: 播放幀率
-    pause_sec: 最後一幀停幾秒
-    """
-    pause_frames = int(fps * pause_sec)
-
-    last = frames[-1:]
-    frames_with_pause = np.concatenate(
-        [frames, np.repeat(last, pause_frames, axis=0)],
-        axis=0
+loop  = glob.glob('./material/storage/T01/0/*.jpg')
+# loop = [
+#     './material/storage/T01/0/0.jpg',
+#     './material/storage/T01/0/1.jpg',
+#     './material/storage/T01/0/2.jpg',
+#     './material/storage/T01/0/3.jpg'
+# ]
+x = []
+y = []
+z = []
+c = []
+for step, path in enumerate(loop):
+    image = PIL.Image.open(path).convert("L").resize((64, 64))
+    image = torchvision.transforms.functional.to_tensor(image)
+    image = torchvision.transforms.functional.pad(image, [1,1,1,1])
+    # frame = frame
+    orientation = Orientation(image)
+    gradient = orientation.getGradient()
+    gradient = torch.nn.functional.avg_pool2d(gradient, (16, 16), (16, 16))
+    timestep = torch.zeros((4, 4)) + step
+    x += gradient[0,:,:].flatten().numpy().tolist()
+    y += gradient[1,:,:].flatten().numpy().tolist()
+    z += timestep.flatten().numpy().tolist()
+    c += [str(index) for index in range(4*4)]
+    continue
+    # # mag = torch.sqrt(gradient[0,:,:]**2 + gradient[1,:,:]**2)
+    # # ori = torch.atan2(gradient[0,:,:], gradient[1,:,:])
+    # # le = torch.cos(ori)
+    # if(index==0):
+    #     pivot = gradient
+    #     continue
+    # # delta = gradient - pivot
+    # gradient
+    # # mag = torch.sqrt(Gx**2 + Gy**2)
+# fig = plotly.express.line(x=z, y=y, color=c)
+fig = plotly.express.scatter_3d(x=x, y=y, z=z, color=c)
+fig.update_layout(
+    scene=dict(
+        # aspectmode='data'
+        aspectmode='manual',
+        aspectratio=dict(x=1, y=1, z=10)  # z 拉成 2 倍高
     )
+)
+fig.show()
 
-    imageio.mimsave(path, frames_with_pause, fps=fps)
+    # torchvision.utils.save_image(
+    #     # le,
+    #     'le.jpg',
+    #     value_range=(-1, 1), 
+    #     normalize=True
+    # )
+    # torchvision.utils.save_image(
+    #     gradient['vertical'],
+    #     'vertical.jpg',
+    #     value_range=(-1, 1), 
+    #     normalize=True
+    # )
 
-# 使用
-save_gif_with_pause(video_np, "result.gif", fps=6, pause_sec=2)
+    # pivot = gradient
+    # continue
 
 # import torch
-# import torch.nn as nn
-# from torch.optim import Adam
-# from diffusers import VQModel
+# import safetensors.torch
+# root = 'https://github.com/'
 
-# # -----------------------
-# # 超參數
-# # -----------------------
-# batch_size = 4
-# channels = 3
-# height = 64
-# width = 64
-# lr = 2e-4
+# # weight = torch.hub.load_state_dict_from_url(
+# #     
+# # )
 
-# # -----------------------
-# # 模型初始化
-# # -----------------------
-# vq_model = VQModel(
-#     in_channels=3,
-#     out_channels=3,
-#     down_block_types=["DownEncoderBlock2D"] * 3,
-#     up_block_types=["UpDecoderBlock2D"] * 3,
-#     block_out_channels=(128, 256, 512),
-#     layers_per_block=1,
-#     # act_fn="silu",
-#     # latent_channels=8,
-#     # norm_num_groups=32,
-#     num_vq_embeddings=512,  # codebook size
-#     vq_embed_dim=8,
-#     # scaling_factor=0.18215,
-# )
+# # print(weight)
 
-# # 設定 optimizer
-# optimizer = Adam(vq_model.parameters(), lr=lr)
+# import requests
+# import torch
+# # from safetensors.torch import load_file
+# import os
+# import safetensors.torch
 
-# # 模擬訓練資料 (batch of images)
-# x = torch.randn(batch_size, channels, height, width)
+# root = './.hub/weight/'
+# url='https://github.com/houzeyu2683/VAe/releases/download/robin-v1.0.0/weight.pt'
+# folder = os.path.basename(os.path.dirname(url))
+# archive = os.path.basename(url)
+# path = os.path.join(root, folder, archive)
+# os.makedirs(os.path.dirname(path), exist_ok=True)
 
-# # -----------------------
-# # Training step
-# # -----------------------
-# vq_model.train()  # 訓練模式
+# response = requests.get(url, stream=True)
+# with open(path, 'wb') as f:
+#     for chunk in response.iter_content(chunk_size=8192):
+#         f.write(chunk)
 
-# optimizer.zero_grad()
+# weight = safetensors.torch.load_file(path)
 
-# # Forward pass (VQModel 會自動處理 encode -> quantize -> decode)
-# output = vq_model(x)
 
-# # output 包含:
-# # - sample: 重建的圖片
-# # - commit_loss: VQ 的 commitment loss
-# x_recon = output.sample
 
-# # Reconstruction loss
-# recon_loss = nn.MSELoss()(x_recon, x)
+# # print('check')
 
-# # VQ commitment loss (從 output 取得)
-# commit_loss = output.commit_loss
+# # def load_safetensors_from_url(url, local_path, device="cpu"):
+# #     """Downloads a safetensors file from a URL and loads it."""
 
-# ##
-# ## 有辦法透過output計算commit_loss？
-# ##
+# #     # 1. Download the file
+# #     print(f"Downloading from {url}...")
+# #     try:
+# #         response = requests.get(url, stream=True)
+# #         response.raise_for_status() # Raise an exception for bad status codes
 
-# # 總 loss
-# total_loss = recon_loss + commit_loss
+# #         with open(local_path, 'wb') as f:
+# #             for chunk in response.iter_content(chunk_size=8192):
+# #                 f.write(chunk)
+# #         print(f"Downloaded and saved to {local_path}")
 
-# # Backward
-# total_loss.backward()
+# #     except requests.exceptions.RequestException as e:
+# #         print(f"Error during download: {e}")
+# #         return None
 
-# # 更新參數
-# optimizer.step()
+# #     # 2. Load the safetensors file from the local path
+# #     try:
+# #         tensors = load_file(local_path, device=device)
+# #         print(f"Successfully loaded tensors to {device} device.")
+# #         return tensors
+# #     except Exception as e:
+# #         print(f"Error loading safetensors file: {e}")
+# #         return None
+# #     finally:
+# #         # Optional: Remove the local file after loading
+# #         # os.remove(local_path)
+# #         pass
 
-# print("Reconstruction loss:", recon_loss.item())
-# print("Commit loss:", commit_loss.item())
-# print("Total loss:", total_loss.item())
+# # # Example Usage (replace with your actual URL and path)
+# # # Note: A real model file URL from Hugging Face might look different.
+# # # This is a generic example.
+# # model_url = "https://huggingface.co" 
+# # model_path = "downloaded_model.safetensors"
+
+# # # Load to CPU or GPU (e.g., "cuda:0")
+# # loaded_tensors = load_safetensors_from_url(model_url, model_path, device="cpu")
+
+# # if loaded_tensors:
+# #     print(f"Keys in the loaded state dict: {loaded_tensors.keys()}")
