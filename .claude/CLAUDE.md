@@ -9,6 +9,7 @@
 | `.claude/code-style.md` | 程式碼風格規範 |
 | `.claude/git-rules.md` | Git commit 與分支規範 |
 | `.claude/api-design.md` | API 與模組設計規範 |
+| `.claude/spec.md` | 需求提交範本 |
 
 ## 快速參考
 
