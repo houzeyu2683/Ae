@@ -83,14 +83,14 @@ class Hub:
     def __init__(self) -> None:
         return
 
-    def getData(self, batch: int) -> torch.utils.data.DataLoader:
+    def getData(self, number: int) -> torch.utils.data.DataLoader:
         name = 'data.txt'
         path = os.path.join(self.folder, name)
         queue = Document(path).getQueue()
         unit = Unit(queue)
         data = torch.utils.data.DataLoader(
             dataset=unit,
-            batch_size=batch,
+            batch_size=number,
             shuffle=True,
             collate_fn=getCollation, #functools.partial(getCollation, device=self.device),
             drop_last=True,
@@ -102,7 +102,7 @@ class Hub:
 
     def getValidation(
         self, 
-        batch: int, 
+        number: int, 
         reproducibility: bool
     ) -> torch.utils.data.DataLoader:
         name = 'validation.txt'
@@ -111,7 +111,7 @@ class Hub:
         unit = Unit(queue)
         validation = torch.utils.data.DataLoader(
             dataset=unit,
-            batch_size=batch,
+            batch_size=number,
             shuffle=not reproducibility,
             collate_fn=getCollation, #functools.partial(getCollation, device=self.device),
             drop_last=not reproducibility,
@@ -123,7 +123,7 @@ class Hub:
     
     def getTest(
         self, 
-        batch: int,
+        number: int,
         reproducibility: bool
     ) -> torch.utils.data.DataLoader:
         name = 'test.txt'
@@ -132,7 +132,7 @@ class Hub:
         unit = Unit(queue)
         test = torch.utils.data.DataLoader(
             dataset=unit,
-            batch_size=batch,
+            batch_size=number,
             shuffle=not reproducibility,
             collate_fn=getCollation, #functools.partial(getCollation, device=self.device),
             drop_last=not reproducibility,
@@ -141,6 +141,21 @@ class Hub:
             persistent_workers=True
         )
         return(test)
+
+    def getBatch(self, number: int) -> tensordict.TensorDict:
+        name = 'data.txt'
+        path = os.path.join(self.folder, name)
+        queue = Document(path).getQueue()
+        unit = Unit(queue)
+        data = torch.utils.data.DataLoader(
+            dataset=unit,
+            batch_size=number,
+            shuffle=True,
+            collate_fn=getCollation, #functools.partial(getCollation, device=self.device),
+            drop_last=True
+        )
+        batch = next(iter(data))
+        return(batch)
 
     folder = 'material/storage'
     pass

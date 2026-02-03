@@ -2,8 +2,8 @@ import material
 import sparrow
 
 hub = material.Hub()
-data = hub.getData(batch=256)
-validation = hub.getValidation(batch=32, reproducibility=False)
+data = hub.getData(number=256)
+validation = hub.getValidation(number=32, reproducibility=False)
 
 device = 'cuda'
 model = sparrow.Model(device)
