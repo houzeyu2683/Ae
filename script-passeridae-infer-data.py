@@ -7,11 +7,11 @@ import torchvision.utils
 
 interface = {}
 
-version, archive = 'sparrow-v1.0.0', 'getCompression.onnx'
+version, archive = 'passeridae-v1.0.0', 'getCompression.onnx'
 getCompression = application.Service(version, archive)
 getCompression.loadSession()
 
-version, archive = 'sparrow-v1.0.0', 'getReconstruction.onnx'
+version, archive = 'passeridae-v1.0.0', 'getReconstruction.onnx'
 getReconstruction = application.Service(version, archive)
 getReconstruction.loadSession()
 
@@ -36,7 +36,7 @@ for image in batch['image']:
 together = numpy.concatenate(group, axis=0)
 torchvision.utils.save_image(
     torch.from_numpy(together),
-    'check.jpg',
+    'result.jpg',
     value_range=(-1, 1), 
     normalize=True
 )

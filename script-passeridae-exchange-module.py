@@ -1,12 +1,12 @@
-import sparrow
+import passeridae
 import application
 import material
 
 device = 'cuda'
-model = sparrow.Model(device)
+model = passeridae.Model(device)
 model.activateLayer()
 
-path = './log/sparrow-2026-0117/weight/210000.pt'
+path = './log/passeridae-2026-0117/weight/210000.pt'
 model.loadWeight(path)
 model.eval()
 
@@ -16,7 +16,7 @@ batch = hub.getBatch(number)
 image = batch['image']
 compression = model.getCompression(image)
 #
-luggage = application.Luggage(folder='./log/sparrow-2026-0117/')
+luggage = application.Luggage(folder='./log/passeridae-2026-0117/')
 #
 data = [image]
 key = ['image']
