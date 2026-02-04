@@ -28,15 +28,15 @@ class Dashboard:
         self.session.add_scalars(tag, element, number)
         return(True)
     
-    def insertPicture(
-        self, tag: str, image: torch.Tensor, number: int
-    ) -> bool:
-        grid = torchvision.utils.make_grid(
-            image, 
-            normalize=True,
-            value_range=(-1, 1)
-        )
-        self.session.add_image(tag, grid, number)
-        return(True)
+    # def insertPicture(
+    #     self, tag: str, image: torch.Tensor, number: int
+    # ) -> bool:
+    #     grid = torchvision.utils.make_grid(
+    #         image, 
+    #         normalize=True,
+    #         value_range=(-1, 1)
+    #     )
+    #     self.session.add_image(tag, grid, number)
+    #     return(True)
 
     pass

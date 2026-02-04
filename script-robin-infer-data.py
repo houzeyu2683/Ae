@@ -1,17 +1,14 @@
 import material
 import application
-
 import numpy
 import torch
 import torchvision.utils
 
-interface = {}
+version, archive = 'robin-v1.0.0', 'getRepresentation.onnx'
+getRepresentation = application.Service(version, archive)
+getRepresentation.loadSession()
 
-version, archive = 'sparrow-v1.0.0', 'getCompression.onnx'
-getCompression = application.Service(version, archive)
-getCompression.loadSession()
-
-version, archive = 'sparrow-v1.0.0', 'getReconstruction.onnx'
+version, archive = 'robin-v1.0.0', 'getReconstruction.onnx'
 getReconstruction = application.Service(version, archive)
 getReconstruction.loadSession()
 
@@ -23,10 +20,10 @@ for image in batch['image']:
     image = image[None, :, :, :].numpy()
     #
     request = {'image': image}
-    response = getCompression(request)
-    compression = response[0]
+    response = getRepresentation(request)
+    _, quantization, _ = response
     #
-    request = {"compression": compression}
+    request = {"quantization": quantization}
     response = getReconstruction(request)
     reconstruction = response[0]
     #
@@ -36,7 +33,7 @@ for image in batch['image']:
 together = numpy.concatenate(group, axis=0)
 torchvision.utils.save_image(
     torch.from_numpy(together),
-    'check.jpg',
+    'result.jpg',
     value_range=(-1, 1), 
     normalize=True
 )

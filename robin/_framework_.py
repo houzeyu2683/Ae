@@ -73,7 +73,6 @@ class Framework:
                 gradient.scale(loss).backward()
                 if(number%accumulation==0):
                     gradient.step(optimization)
-                    # schedule.step()
                     gradient.update()
                     optimization.zero_grad()
                     pass

@@ -1,12 +1,12 @@
-import sparrow
+import robin
 import application
 import material
 
 device = 'cuda'
-model = sparrow.Model(device)
+model = robin.Model(device)
 model.activateLayer()
 
-path = './log/sparrow-2026-0117/weight/210000.pt'
+path = './log/robin-2026-0203/weight/130000.pt'
 model.loadWeight(path)
 model.eval()
 
@@ -14,22 +14,23 @@ hub = material.Hub()
 number = 1
 batch = hub.getBatch(number)
 image = batch['image']
-compression = model.getCompression(image)
+representation = model.getRepresentation(image)
 #
-luggage = application.Luggage(folder='./log/sparrow-2026-0117/')
+luggage = application.Luggage(folder='./log/robin-2026-0203')
 #
 data = [image]
 key = ['image']
 luggage.exportModule(
     model=model, 
-    method='getCompression', 
+    method='getRepresentation', 
     data=data, 
     key=key, 
-    archive='getCompression.onnx'
+    archive='getRepresentation.onnx'
 )
 #
-data = [compression]
-key = ['compression']
+quantization = representation['quantization']
+data = [quantization]
+key = ['quantization']
 luggage.exportModule(
     model=model, 
     method='getReconstruction', 

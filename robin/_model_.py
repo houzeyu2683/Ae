@@ -17,47 +17,26 @@ class Model(torch.nn.Module):
         self.load_state_dict(weight)
         return(True)
 
-    def loadVersion(self, tag: str) -> bool:
-        link = 'https://github.com/houzeyu2683/VAe/releases/download/'
-        root = '.hub/model/'
-        archive = 'weight.pt'
-        access = os.path.join(link, tag, archive)
-        folder = os.path.join(root, tag)
-        # archive = os.path.basename(access)
-        path = os.path.join(folder, archive)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        here = os.path.isfile(path)
-        if(not here):
-            response = requests.get(access, stream=True)
-            paper = open(path, 'wb')
-            # with open(path, 'wb') as paper:
-            for chunk in response.iter_content(chunk_size=8192):
-                paper.write(chunk)
-                continue
-            paper.close()
-            pass
-        weight = safetensors.torch.load_file(path)
-        self.load_state_dict(weight)
-        return(True)
-
     def activateLayer(self) -> bool:
+        # import diffusers.models.unets.unet_2d_blocks
+        # diffusers.models.unets.unet_2d_blocks.Re
         layer = diffusers.VQModel(
             in_channels=3,
             out_channels=3,
             down_block_types=(
                 "DownEncoderBlock2D",
-                "DownEncoderBlock2D",
+                # "DownEncoderBlock2D",
                 # "DownEncoderBlock2D"
             ),
             up_block_types=(
                 "UpDecoderBlock2D",
-                "UpDecoderBlock2D",
+                # "UpDecoderBlock2D",
                 # "UpDecoderBlock2D"
             ),
-            block_out_channels=(32, 64),
+            # block_out_channels=(128,),
             layers_per_block=1,
-            num_vq_embeddings=64,  # codebook size
-            vq_embed_dim=8
+            num_vq_embeddings=256,  # codebook size
+            vq_embed_dim=32
         )
         self.layer = layer.to(self.device)
         return(True)
@@ -100,6 +79,7 @@ class Model(torch.nn.Module):
         #     self.getLuminosity(reconstruction)
         # )
         # brightness = torch.pow(brightness, 2).mean()
+        # decay = 0.8
         total = commitment + pixel #+ brightness
         criteria = tensordict.TensorDict(device=self.device)
         criteria.set('commitment', commitment)
@@ -107,6 +87,9 @@ class Model(torch.nn.Module):
         # criteria.set('brightness', brightness)
         criteria.set('total', total)
         return(criteria)
+
+    forward = getCriteria
+    pass
 
     # def getLuminosity(self, image: torch.Tensor) -> torch.Tensor:
     #     """
@@ -130,7 +113,27 @@ class Model(torch.nn.Module):
     #     # yuv = torch.cat([y, u, v], dim=1)
     #     return(luminosity)
 
-    forward = getCriteria
-    pass
 
 
+    # def loadVersion(self, tag: str) -> bool:
+    #     link = 'https://github.com/houzeyu2683/VAe/releases/download/'
+    #     root = '.hub/model/'
+    #     archive = 'weight.pt'
+    #     access = os.path.join(link, tag, archive)
+    #     folder = os.path.join(root, tag)
+    #     # archive = os.path.basename(access)
+    #     path = os.path.join(folder, archive)
+    #     os.makedirs(os.path.dirname(path), exist_ok=True)
+    #     here = os.path.isfile(path)
+    #     if(not here):
+    #         response = requests.get(access, stream=True)
+    #         paper = open(path, 'wb')
+    #         # with open(path, 'wb') as paper:
+    #         for chunk in response.iter_content(chunk_size=8192):
+    #             paper.write(chunk)
+    #             continue
+    #         paper.close()
+    #         pass
+    #     weight = safetensors.torch.load_file(path)
+    #     self.load_state_dict(weight)
+    #     return(True)
