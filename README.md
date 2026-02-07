@@ -1,209 +1,170 @@
-# Ae - Autoencoder
+# Passeriformes
 
-A PyTorch implementation of Autoencoder (Ae) for face image generation and reconstruction, built on top of the Diffusers library's AutoencoderKL architecture.
-
-## Overview
-
-This project implements a VAE model for learning latent representations of face images. The model can:
-- Encode face images into a lower-dimensional latent space
-- Reconstruct images from their latent representations
-- Generate new face images by sampling from the learned latent distribution
+A PyTorch implementation of autoencoder models for face image generation and reconstruction, built on the Diffusers library. The project provides two model variants: **Passeridae** (AutoencoderKL) and **Laniidae** (VQModel), covering both continuous and discrete latent space approaches.
 
 ## Project Structure
 
 ```
-Ae/
-├── facility/           # Core model and training framework
-│   ├── _sparrow_.py   # VAE model implementation (Sparrow)
-│   └── _framework_.py # Training framework and utilities
-├── material/          # Data loading and preprocessing
-│   ├── _hub_.py      # DataLoader hub for train/val/test sets
-│   └── storage/      # Dataset file lists (data.txt, validation.txt)
-├── visualization/     # TensorBoard integration
-│   └── _dashboard_.py # Logging metrics and images
-├── script-fit-data.py    # Main training script
-└── script-unit-test.py   # Data loading test script
+Passeriformes/
+├── passeridae/              # AutoencoderKL model (continuous latent)
+│   ├── _model_.py           # Model implementation
+│   └── _framework_.py       # Training framework
+├── laniidae/                # VQModel (discrete latent / vector-quantized)
+│   ├── _model_.py           # Model implementation
+│   └── _framework_.py       # Training framework
+├── material/                # Data loading and preprocessing
+│   ├── _hub_.py             # DataLoader hub (train/val/test)
+│   └── storage/             # Dataset file lists and image data
+├── visualization/           # TensorBoard integration
+│   └── _dashboard_.py       # Metric logging
+├── application/             # Model export and inference
+│   ├── _luggage_.py         # ONNX export utility
+│   └── _service_.py         # ONNX Runtime inference service
+├── log/                     # Training logs and checkpoints
+├── script-passeridae-*.py   # KL model pipeline scripts (1~4)
+├── script-laniidae-*.py     # VQ model pipeline scripts (1~4)
+└── environment.yaml         # Conda environment
 ```
 
 ## Model Architecture
 
-**Sparrow** (facility/_sparrow_.py): The VAE model based on `diffusers.AutoencoderKL`
-- Input/Output: 3-channel RGB images (64×64)
-- Latent channels: 8
-- Encoder/Decoder: 5-layer hierarchical structure with channels [32, 64, 128, 256, 256]
-- Latent space: 8×4×4 = 128-dimensional
+### Passeridae (AutoencoderKL)
 
-**Loss Function**:
-- KL Divergence: Regularizes the latent distribution
-- Mean Squared Error (MSE): Reconstruction quality
-- Total Loss = scale × KL + MSE
+Based on `diffusers.AutoencoderKL`, uses continuous Gaussian latent space.
+
+| Item | Value |
+|------|-------|
+| Encoder / Decoder blocks | 4 / 4 |
+| Channel progression | 32, 64, 128, 256 |
+| Latent channels | 32 |
+| Loss function | MSE (pixel reconstruction) |
+
+Key methods:
+- `getCompression(image)` - Encode image to latent mean
+- `getReconstruction(compression)` - Decode latent back to image
+- `getCriteria(batch)` - Compute training loss
+
+### Laniidae (VQModel)
+
+Based on `diffusers.VQModel`, uses discrete codebook for quantized latent representations.
+
+| Item | Value |
+|------|-------|
+| Encoder / Decoder blocks | 1 / 1 |
+| Codebook size | 256 |
+| Embedding dimension | 32 |
+| Loss function | Commitment loss + MSE |
+
+Key methods:
+- `getRepresentation(image)` - Encode image to embedding, quantization, and token
+- `getReconstruction(quantization)` - Decode quantized latent to image
+- `getCriteria(batch)` - Compute training loss
 
 ## Installation
 
-### Dependencies
-
 ```bash
-pip install torch torchvision
-pip install diffusers
-pip install tensordict
-pip install bitsandbytes
-pip install safetensors
-pip install tensorboard
-pip install torchcodec
-pip install tqdm
-pip install pillow
+conda env create -f environment.yaml
+conda activate Ae
 ```
+
+### Core dependencies
+
+- `torch` 2.9, `torchvision` 0.24
+- `diffusers` 0.36
+- `tensordict` 0.10
+- `bitsandbytes` 0.49 (8-bit AdamW optimizer)
+- `safetensors` 0.7
+- `tensorboard` 2.20
+- `onnxruntime-gpu` 1.23, `onnx` 1.20
+- `pillow` 12.0
 
 ## Data Preparation
 
-1. Prepare your face image dataset
-2. Create file lists in `material/storage/`:
-   - `data.txt`: Training set image paths (one per line)
-   - `validation.txt`: Validation set image paths
-   - (Optional) `test.txt`: Test set image paths
+Place image paths in text files under `material/storage/`:
 
-**Note**: Image paths in the txt files should be relative to `material/storage/`.
+- `data.txt` - Training set (one relative path per line)
+- `validation.txt` - Validation set
+- `test.txt` - Test set (optional)
 
-## Usage
+All paths are relative to `material/storage/`. Images are resized to 64x64 and normalized to [-1, 1].
+
+## Pipeline Scripts
+
+Each model has four pipeline scripts:
+
+| Step | Script | Description |
+|------|--------|-------------|
+| 1 | `script-{model}-1-fit-data.py` | Train the model |
+| 2 | `script-{model}-2-average-weight.py` | Average multiple checkpoints |
+| 3 | `script-{model}-3-exchange-module.py` | Export to ONNX format |
+| 4 | `script-{model}-4-infer-data.py` | Run inference with ONNX Runtime |
+
+Replace `{model}` with `passeridae` or `laniidae`.
 
 ### Training
 
-Edit [script-fit-data.py](script-fit-data.py) to configure training parameters:
+```bash
+# KL model (Passeridae)
+python script-passeridae-1-fit-data.py
+
+# VQ model (Laniidae)
+python script-laniidae-1-fit-data.py
+```
+
+Training parameters are configured directly in the script:
 
 ```python
-device = 'cuda'           # or 'cpu'
-batch = 256              # training batch size
-snapshot = 1000          # save checkpoint every N steps
-total = -1               # total iterations (-1 for infinite)
-accumulation = 1         # gradient accumulation steps
-history = './exp/Dec31'  # experiment output directory
+data = hub.getData(number=256)           # batch size
+snapshot = 1000                          # checkpoint interval (steps)
+total = -1                               # total steps (-1 = infinite)
+accumulation = 4                         # gradient accumulation steps
+history = './log/passeridae-2026-0208'   # output directory
 ```
 
-Run training:
-```bash
-python script-fit-data.py
-```
+Training uses mixed precision (`torch.amp.autocast`) and 8-bit AdamW optimizer with learning rate 1e-4.
 
-**Key parameters**:
-- `scale`: KL divergence weight in loss function (default: 1.0, adjustable in framework.fitWeight)
-- `rate`: Learning rate (default: 1e-4)
+### Resume training
 
-### Resuming Training
+Load a checkpoint before calling `fitWeight`:
 
-Uncomment and modify the following line in [script-fit-data.py](script-fit-data.py):
 ```python
-framework.loadWeight(path='./exp/Dec23-2/weight/400.pt')
+model.loadCheckpoint(path='./log/passeridae-2026-0117/checkpoint/210000.pt')
 ```
 
-### Monitoring Training
+### Monitor training
 
-Launch TensorBoard to monitor training progress:
 ```bash
-tensorboard --logdir ./exp/Dec31
+tensorboard --logdir ./log/passeridae-2026-0208
 ```
 
-Available visualizations:
-- `Data/Loss(Total)`: Combined loss
-- `Data/Loss(Divergence)`: KL divergence term
-- `Data/Loss(Mean Squared Error)`: Reconstruction error
-- `Validation`: Original vs. reconstructed images
-- `Generation`: Randomly generated faces
+Tracked metrics: `Loss/Data` (training loss) and `Loss/Validation` (validation loss), with sub-tags for each loss component.
 
-### Testing Data Loading
+### Export and inference
 
-Verify your dataset is set up correctly:
 ```bash
-python script-unit-test.py
+# Export model to ONNX
+python script-passeridae-3-exchange-module.py
+
+# Run inference using ONNX Runtime
+python script-passeridae-4-infer-data.py
 ```
+
+ONNX models are published to [GitHub Releases](https://github.com/houzeyu2683/Ae/releases) and downloaded automatically by `application.Service` at inference time.
 
 ## Output Structure
 
-Training outputs are saved to the specified `history` directory:
 ```
-exp/Dec31/
-├── weight/
-│   ├── model.pt      # Full model (saved at start)
-│   ├── 0.pt          # Checkpoint at step 0
-│   ├── 1000.pt       # Checkpoint at step 1000
+log/passeridae-2026-0208/
+├── checkpoint/
+│   ├── 1000.pt
+│   ├── 2000.pt
 │   └── ...
-└── events.out.tfevents.*  # TensorBoard logs
+├── weight.pt                     # Averaged weights
+└── events.out.tfevents.*         # TensorBoard logs
 ```
 
-Checkpoints are saved using SafeTensors format (`.pt` files contain state_dict).
-
-## Datasets
-
-The `note` file contains links to potential face datasets:
-- AFAD-Full
-- Asian Regularization Images
-- SCUT-FBP5500 V2 (Facial Beauty Rating)
-- CASIA-Webface
-- UMDFace
-- VGG2
-- Asian-celeb-112x112
-
-## Key Classes
-
-### Hub (material/_hub_.py)
-Data management class for loading datasets.
-
-**Methods**:
-- `getData(batch)`: Get training DataLoader
-- `getValidation(batch, reproducibility)`: Get validation DataLoader
-- `getTest(batch, reproducibility)`: Get test DataLoader
-
-### Sparrow (facility/_sparrow_.py)
-VAE model implementation.
-
-**Methods**:
-- `activateLayer()`: Initialize the AutoencoderKL architecture
-- `getDistribution(image)`: Encode image to latent distribution (mean, variance)
-- `getReconstruction(reparameterization)`: Decode latent vector to image
-- `getCriteria(batch, scale)`: Compute loss (KL + MSE)
-- `getGeneration(number)`: Generate random faces by sampling latent space
-
-### Framework (facility/_framework_.py)
-Training orchestration and checkpoint management.
-
-**Methods**:
-- `fitWeight(data, snapshot, total, accumulation, validation)`: Main training loop
-- `saveWeight(path)` / `loadWeight(path)`: Checkpoint I/O
-- `saveModel(path)` / `loadModel(path)`: Full model I/O
-
-### Dashboard (visualization/_dashboard_.py)
-TensorBoard logging wrapper.
-
-**Methods**:
-- `insertElement(tag, value, number)`: Log scalar metrics
-- `insertPicture(tag, image, number)`: Log image grids
-
-## Advanced Configuration
-
-### Modifying Model Architecture
-
-Edit `activateLayer()` in [facility/_sparrow_.py](facility/_sparrow_.py):
-```python
-layer = diffusers.AutoencoderKL(
-    in_channels=3,
-    out_channels=3,
-    latent_channels=8,
-    block_out_channels=[32, 64, 128, 256, 256],  # Adjust channel sizes
-    down_block_types=["DownEncoderBlock2D"] * 5,
-    up_block_types=["UpDecoderBlock2D"] * 5
-)
-```
-
-### Gradient Accumulation
-
-For larger effective batch sizes on limited GPU memory:
-```python
-accumulation = 4  # Effective batch = batch * accumulation
-```
-
-### Mixed Precision Training
-
-The framework uses `torch.amp.autocast` for automatic mixed precision training on CUDA devices.
+Checkpoints are saved in SafeTensors format.
 
 ## License
 
-See [LICENSE](LICENSE) for details.
+BSD 3-Clause License. See [LICENSE](LICENSE) for details.
