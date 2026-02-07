@@ -1,29 +1,32 @@
 import material
 import application
+
 import numpy
 import torch
 import torchvision.utils
 
-version, archive = 'robin-v1.0.0', 'getRepresentation.onnx'
-getRepresentation = application.Service(version, archive)
-getRepresentation.loadSession()
+interface = {}
 
-version, archive = 'robin-v1.0.0', 'getReconstruction.onnx'
+version, archive = 'passeridae-v1.0.0', 'getCompression.onnx'
+getCompression = application.Service(version, archive)
+getCompression.loadSession()
+
+version, archive = 'passeridae-v1.0.0', 'getReconstruction.onnx'
 getReconstruction = application.Service(version, archive)
 getReconstruction.loadSession()
 
 hub = material.Hub()
-batch = hub.getBatch(number=256)
+batch = hub.getBatch(number=64)
 #
 group = []
 for image in batch['image']:
     image = image[None, :, :, :].numpy()
     #
     request = {'image': image}
-    response = getRepresentation(request)
-    _, quantization, _ = response
+    response = getCompression(request)
+    compression = response[0]
     #
-    request = {"quantization": quantization}
+    request = {"compression": compression}
     response = getReconstruction(request)
     reconstruction = response[0]
     #

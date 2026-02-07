@@ -1,35 +1,36 @@
-import passeridae
+import laniidae
 import application
 import material
 
 device = 'cuda'
-model = passeridae.Model(device)
+model = laniidae.Model(device)
 model.activateLayer()
 
-path = './log/passeridae-2026-0117/weight/210000.pt'
-model.loadWeight(path)
+path = './log/laniidae-2026-0203/weight.pt'
+model.loadCheckpoint(path)
 model.eval()
 
 hub = material.Hub()
 number = 1
 batch = hub.getBatch(number)
 image = batch['image']
-compression = model.getCompression(image)
+representation = model.getRepresentation(image)
 #
-luggage = application.Luggage(folder='./log/passeridae-2026-0117/')
+luggage = application.Luggage(folder='./log/laniidae-2026-0203')
 #
 data = [image]
 key = ['image']
 luggage.exportModule(
     model=model, 
-    method='getCompression', 
+    method='getRepresentation', 
     data=data, 
     key=key, 
-    archive='getCompression.onnx'
+    archive='getRepresentation.onnx'
 )
 #
-data = [compression]
-key = ['compression']
+quantization = representation['quantization']
+data = [quantization]
+key = ['quantization']
 luggage.exportModule(
     model=model, 
     method='getReconstruction', 

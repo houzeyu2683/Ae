@@ -1,9 +1,9 @@
 import torch
-import sparrow
+import passeridae
 
 device = 'cuda'
 tag = 'sparrow-v1.0.0'
-model = sparrow.Model(device)
+model = passeridae.Model(device)
 model.activateLayer()
 model.loadVersion(tag)
 model.eval()

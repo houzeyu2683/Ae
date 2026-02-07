@@ -1,36 +1,35 @@
-import robin
+import passeridae
 import application
 import material
 
 device = 'cuda'
-model = robin.Model(device)
+model = passeridae.Model(device)
 model.activateLayer()
 
-path = './log/robin-2026-0203/weight/130000.pt'
-model.loadWeight(path)
+path = './log/passeridae-2026-0117/weight.pt'
+model.loadCheckpoint(path)
 model.eval()
 
 hub = material.Hub()
 number = 1
 batch = hub.getBatch(number)
 image = batch['image']
-representation = model.getRepresentation(image)
+compression = model.getCompression(image)
 #
-luggage = application.Luggage(folder='./log/robin-2026-0203')
+luggage = application.Luggage(folder='./log/passeridae-2026-0117/')
 #
 data = [image]
 key = ['image']
 luggage.exportModule(
     model=model, 
-    method='getRepresentation', 
+    method='getCompression', 
     data=data, 
     key=key, 
-    archive='getRepresentation.onnx'
+    archive='getCompression.onnx'
 )
 #
-quantization = representation['quantization']
-data = [quantization]
-key = ['quantization']
+data = [compression]
+key = ['compression']
 luggage.exportModule(
     model=model, 
     method='getReconstruction', 

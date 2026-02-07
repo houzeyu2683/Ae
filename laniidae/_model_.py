@@ -12,9 +12,9 @@ class Model(torch.nn.Module):
         self.device = device
         return
 
-    def loadWeight(self, path: str) -> bool:
-        weight = safetensors.torch.load_file(path)
-        self.load_state_dict(weight)
+    def loadCheckpoint(self, path: str) -> bool:
+        checkpoint = safetensors.torch.load_file(path)
+        self.load_state_dict(checkpoint)
         return(True)
 
     def activateLayer(self) -> bool:

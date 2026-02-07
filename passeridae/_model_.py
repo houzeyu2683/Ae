@@ -12,7 +12,7 @@ class Model(torch.nn.Module):
         self.device = device
         return
 
-    def loadWeight(self, path: str) -> bool:
+    def loadCheckpoint(self, path: str) -> bool:
         state_dict = safetensors.torch.load_file(path)
         self.load_state_dict(state_dict)
         return(True)

@@ -20,7 +20,7 @@ class Framework:
         self.history = history
         return
 
-    def saveWeight(self, path: str) -> bool:
+    def saveCheckpoint(self, path: str) -> bool:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         safetensors.torch.save_file(self.model.state_dict(), path)
         return(True)
@@ -110,12 +110,12 @@ class Framework:
                 )
                 # Snapshot
                 if(number==1 or number%snapshot==0):
-                    checkpoint = os.path.join(
+                    path = os.path.join(
                         self.history, 
-                        'weight',
+                        'checkpoint',
                         f'{number}.pt'
                     )
-                    self.saveWeight(path=checkpoint)
+                    self.saveCheckpoint(path)
                     pass
                 number += 1
                 termination = False if(total==-1) else (total<number)
@@ -127,33 +127,61 @@ class Framework:
         dashboard.closeSession()
         return(True)
 
-    @torch.no_grad()
-    def makeComparison(self, batch: tensordict.TensorDict) -> bool:
-        batch = batch.to(self.device, non_blocking=True)
-        self.model.eval()
-        # with torch.no_grad():
-        image = batch['image']
-        getCompression = getattr(self.model, 'getCompression')
-        getReconstruction = getattr(self.model, 'getReconstruction')
-        compression = getCompression(image)
-        # sample = distribution['sample']
-        reconstruction = getReconstruction(compression)
-            # pass
-        comparison = torch.cat([image, reconstruction], dim=0)
-        self.comparison = comparison
+    def saveWeight(self, checkpoint: list) -> bool:
+        # folder = os.path.join(self.history, 'weight')
+        index = checkpoint.pop(0)
+        path = os.path.join(self.history, 'checkpoint', index)
+        aggregate = {}
+        iteration = safetensors.torch.load_file(path).items()
+        for key, value in iteration:
+            aggregate.update({key: value.clone()})
+            continue
+        _ = iteration
+        #
+        iteration = checkpoint
+        for index in iteration:
+            path = os.path.join(self.history, 'checkpoint', index)
+            state = safetensors.torch.load_file(path)
+            for key in aggregate: aggregate[key] += state[key]
+            continue
+        _ = iteration
+        size = len(checkpoint) + 1
+        for key in aggregate: aggregate[key] /= size
+        structure = self.model.state_dict()
+        assert aggregate.keys() == structure.keys()
+        weight = aggregate
+        path = os.path.join(self.history, 'weight.pt')
+        safetensors.torch.save_file(weight, path)
         return(True)
+    
+    pass
+    # @torch.no_grad()
+    # def makeComparison(self, batch: tensordict.TensorDict) -> bool:
+    #     batch = batch.to(self.device, non_blocking=True)
+    #     self.model.eval()
+    #     # with torch.no_grad():
+    #     image = batch['image']
+    #     getCompression = getattr(self.model, 'getCompression')
+    #     getReconstruction = getattr(self.model, 'getReconstruction')
+    #     compression = getCompression(image)
+    #     # sample = distribution['sample']
+    #     reconstruction = getReconstruction(compression)
+    #         # pass
+    #     comparison = torch.cat([image, reconstruction], dim=0)
+    #     self.comparison = comparison
+    #     return(True)
 
-    def saveComparison(self, archive: str) -> bool:
-        tag = 'comparison'
-        folder = os.path.join(self.history, tag)
-        os.makedirs(folder, exist_ok=True)
-        torchvision.utils.save_image(
-            self.comparison,
-            os.path.join(folder, archive),
-            normalize=True,
-            value_range=(-1, 1)
-        )
-        return(True)
+    # def saveComparison(self, archive: str) -> bool:
+    #     tag = 'comparison'
+    #     folder = os.path.join(self.history, tag)
+    #     os.makedirs(folder, exist_ok=True)
+    #     torchvision.utils.save_image(
+    #         self.comparison,
+    #         os.path.join(folder, archive),
+    #         normalize=True,
+    #         value_range=(-1, 1)
+    #     )
+    #     return(True)
     
     # @torch.no_grad()
     # def makePerspective(self, number: int) -> bool:
@@ -211,7 +239,7 @@ class Framework:
     #     )
     #     return(True)
 
-    pass
+
 
                     # self.model.eval()
                     # with torch.no_grad():

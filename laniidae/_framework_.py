@@ -20,7 +20,7 @@ class Framework:
         self.history = history
         return
 
-    def saveWeight(self, path: str) -> bool:
+    def saveCheckpoint(self, path: str) -> bool:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         safetensors.torch.save_file(self.model.state_dict(), path)
         return(True)
@@ -107,12 +107,12 @@ class Framework:
                 )
                 # Snapshot
                 if(number==1 or (number%snapshot)==0):
-                    checkpoint = os.path.join(
+                    path = os.path.join(
                         self.history, 
-                        'weight',
+                        'checkpoint',
                         f'{number}.pt'
                     )
-                    self.saveWeight(path=checkpoint)
+                    self.saveCheckpoint(path)
                     pass
                 number += 1
                 termination = False if(total==-1) else (total<number)
@@ -124,46 +124,31 @@ class Framework:
         dashboard.closeSession()
         return(True)
 
-    @torch.no_grad()
-    def makeInference(self, batch: tensordict.TensorDict) -> bool:
-        batch = batch.to(self.device, non_blocking=True)
-        self.model.eval()
-        getRepresentation = getattr(
-            self.model, 'getRepresentation'
-        )
-        getReconstruction = getattr(
-            self.model, 'getReconstruction'
-        )
-        image = batch['image']
-        representation = getRepresentation(image)
-        quantization = representation['quantization']
-        reconstruction = getReconstruction(quantization)
-        inference = {
-            'image': image,
-            'reconstruction': reconstruction
-        }
-        # inference = torch.cat([image, reconstruction], dim=0)
-        self.inference = inference
-        return(True)
-
-    def saveInference(self, archive: str, comparison: bool) -> bool:
-        tag = 'inference'
-        folder = os.path.join(self.history, tag)
-        os.makedirs(folder, exist_ok=True)
-        if(comparison):
-            image = self.inference['image']
-            reconstruction = self.inference['reconstruction']
-            inference = torch.cat([image, reconstruction], dim=0)
-            pass
-        else:
-            inference = self.inference['reconstruction']
-            pass
-        torchvision.utils.save_image(
-            inference,
-            os.path.join(folder, archive),
-            normalize=True,
-            value_range=(-1, 1)
-        )
+    def saveWeight(self, checkpoint: list) -> bool:
+        # folder = os.path.join(self.history, 'weight')
+        index = checkpoint.pop(0)
+        path = os.path.join(self.history, 'checkpoint', index)
+        aggregate = {}
+        iteration = safetensors.torch.load_file(path).items()
+        for key, value in iteration:
+            aggregate.update({key: value.clone()})
+            continue
+        _ = iteration
+        #
+        iteration = checkpoint
+        for index in iteration:
+            path = os.path.join(self.history, 'checkpoint', index)
+            state = safetensors.torch.load_file(path)
+            for key in aggregate: aggregate[key] += state[key]
+            continue
+        _ = iteration
+        size = len(checkpoint) + 1
+        for key in aggregate: aggregate[key] /= size
+        structure = self.model.state_dict()
+        assert aggregate.keys() == structure.keys()
+        weight = aggregate
+        path = os.path.join(self.history, 'weight.pt')
+        safetensors.torch.save_file(weight, path)
         return(True)
 
     pass
@@ -193,3 +178,45 @@ class Framework:
                     #     number
                     # )
                     # self.model.train()
+
+    # @torch.no_grad()
+    # def makeInference(self, batch: tensordict.TensorDict) -> bool:
+    #     batch = batch.to(self.device, non_blocking=True)
+    #     self.model.eval()
+    #     getRepresentation = getattr(
+    #         self.model, 'getRepresentation'
+    #     )
+    #     getReconstruction = getattr(
+    #         self.model, 'getReconstruction'
+    #     )
+    #     image = batch['image']
+    #     representation = getRepresentation(image)
+    #     quantization = representation['quantization']
+    #     reconstruction = getReconstruction(quantization)
+    #     inference = {
+    #         'image': image,
+    #         'reconstruction': reconstruction
+    #     }
+    #     # inference = torch.cat([image, reconstruction], dim=0)
+    #     self.inference = inference
+    #     return(True)
+
+    # def saveInference(self, archive: str, comparison: bool) -> bool:
+    #     tag = 'inference'
+    #     folder = os.path.join(self.history, tag)
+    #     os.makedirs(folder, exist_ok=True)
+    #     if(comparison):
+    #         image = self.inference['image']
+    #         reconstruction = self.inference['reconstruction']
+    #         inference = torch.cat([image, reconstruction], dim=0)
+    #         pass
+    #     else:
+    #         inference = self.inference['reconstruction']
+    #         pass
+    #     torchvision.utils.save_image(
+    #         inference,
+    #         os.path.join(folder, archive),
+    #         normalize=True,
+    #         value_range=(-1, 1)
+    #     )
+    #     return(True)
