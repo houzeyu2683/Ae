@@ -1,11 +1,11 @@
-import laniidae
+import lani
 
 device = 'cpu'
-model = laniidae.Model(device)
+model = lani.Model(device)
 model.activateLayer()
 
-history = './log/laniidae-2026-0203/'
-framework = laniidae.Framework(model, device, history)
+history = './log/lani-2026-0203/'
+framework = lani.Framework(model, device, history)
 
 # # aggregate = framework.Aggregate(history)
 checkpoint = [

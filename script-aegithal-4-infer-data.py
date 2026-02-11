@@ -1,14 +1,17 @@
 import material
 import application
+
 import numpy
 import torch
 import torchvision.utils
 
-version, archive = 'laniidae-v1.0.0', 'getRepresentation.onnx'
-getRepresentation = application.Service(version, archive)
-getRepresentation.loadSession()
+interface = {}
 
-version, archive = 'laniidae-v1.0.0', 'getReconstruction.onnx'
+version, archive = 'aegithal-v1.0.0', 'getCompression.onnx'
+getCompression = application.Service(version, archive)
+getCompression.loadSession()
+
+version, archive = 'aegithal-v1.0.0', 'getReconstruction.onnx'
 getReconstruction = application.Service(version, archive)
 getReconstruction.loadSession()
 
@@ -20,10 +23,10 @@ for image in batch['image']:
     image = image[None, :, :, :].numpy()
     #
     request = {'image': image}
-    response = getRepresentation(request)
-    _, quantization, _ = response
+    response = getCompression(request)
+    compression = response[0]
     #
-    request = {"quantization": quantization}
+    request = {"compression": compression}
     response = getReconstruction(request)
     reconstruction = response[0]
     #

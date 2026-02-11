@@ -1,11 +1,11 @@
-import passeridae
+import aegithal
 
 device = 'cpu'
-model = passeridae.Model(device)
+model = aegithal.Model(device)
 model.activateLayer()
 
-history = './log/passeridae-2026-0117/'
-framework = passeridae.Framework(model, device, history)
+history = './log/aegithal-2026-0117/'
+framework = aegithal.Framework(model, device, history)
 
 # # aggregate = framework.Aggregate(history)
 checkpoint = [

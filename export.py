@@ -1,9 +1,9 @@
 import torch
-import passeridae
+import aegithal
 
 device = 'cuda'
 tag = 'sparrow-v1.0.0'
-model = passeridae.Model(device)
+model = aegithal.Model(device)
 model.activateLayer()
 model.loadVersion(tag)
 model.eval()

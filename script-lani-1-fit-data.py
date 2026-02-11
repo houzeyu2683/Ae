@@ -1,17 +1,17 @@
 import material
-import laniidae
+import lani
 
 hub = material.Hub()
 data = hub.getData(number=128)
 validation = hub.getValidation(number=32, reproducibility=False)
 
 device = 'cuda'
-model = laniidae.Model(device)
+model = lani.Model(device)
 model.activateLayer()
 # model.loadWeight(path='./log/robin-2026-0103/weight/60900.pt') # 看情況
 
-history = './log/laniidae-2026-0203' #
-framework = laniidae.Framework(model, device, history)
+history = './log/lani-2026-0203' #
+framework = lani.Framework(model, device, history)
 
 snapshot = 10000
 total = -1
