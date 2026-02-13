@@ -7,8 +7,7 @@ model = aegithal.Model(device)
 model.activateLayer()
 
 path = './log/aegithal-2026-0117/weight.pt'
-model.loadCheckpoint(path)
-model.eval()
+model.loadWeight(path)
 
 hub = material.Hub()
 number = 1

@@ -8,7 +8,7 @@ validation = hub.getValidation(number=32, reproducibility=False)
 device = 'cuda'
 model = aegithal.Model(device)
 model.activateLayer()
-model.loadCheckpoint(path='./log/aegithal-2026-0117/checkpoint/210000.pt') # 看情況
+# model.loadWeight(path='')
 
 history = './log/aegithal-2026-0208'
 framework = aegithal.Framework(model, device, history)

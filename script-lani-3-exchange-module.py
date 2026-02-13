@@ -7,8 +7,7 @@ model = lani.Model(device)
 model.activateLayer()
 
 path = './log/lani-2026-0203/weight.pt'
-model.loadCheckpoint(path)
-model.eval()
+model.loadWeight(path)
 
 hub = material.Hub()
 number = 1

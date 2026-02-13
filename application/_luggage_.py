@@ -18,6 +18,7 @@ class Luggage:
         # elasticity: dict,
         archive: str
     ) -> bool:
+        model.eval()
         function = getattr(model, method)
         module = torch.nn.Module()
         setattr(module, 'forward', function)
